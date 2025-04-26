@@ -401,6 +401,19 @@
                              <span class="text-neutral-darkest">Analysis complete for <span class="font-medium">{uploadedFileName}</span>.</span>
                          </div>
 
+                         <!-- <<< NEW: Display Contract Category >>> -->
+                         {#if contractCategory}
+                             <div class="flex items-center space-x-2 pl-7">
+                                <svelte:component this={FileIcon} class="w-4 h-4 text-brand-muted flex-shrink-0" />
+                                <span class="text-xs text-neutral-medium">Detected Category: <span class="font-medium text-neutral-darkest">{contractCategory}</span></span>
+                             </div>
+                         {:else}
+                            <div class="flex items-center space-x-2 pl-7">
+                                 <svelte:component this={HelpCircle} class="w-4 h-4 text-yellow-600 flex-shrink-0" />
+                                 <span class="text-xs text-neutral-medium italic">Category could not be determined.</span>
+                            </div>
+                         {/if}
+
                          <!-- General Req Summary -->
                          {#if generalRequirementsResult}
                              {@const generalCounts = Object.values(generalRequirementsResult).reduce((acc, criteria) => {
@@ -545,7 +558,8 @@
             <details class="mt-8 group" open> 
                  <summary class="list-none cursor-pointer flex items-center justify-between pb-3 border-b border-neutral-light mb-4">
                      <h3 id="category-results-heading" class="text-lg font-semibold text-neutral-dark font-serif">
-                        {#if contractCategory}Specific Requirements for: {contractCategory}{:else}Category Specific Requirements{/if}
+                        <!-- {#if contractCategory}Specific Requirements for: {contractCategory}{:else}Category Specific Requirements{/if} -->
+                        Specific Analysis of the Contract
                      </h3>
                      <svelte:component this={ChevronDown} class="w-5 h-5 text-neutral-dark group-open:rotate-180 transition-transform flex-shrink-0 ml-2"/>
                  </summary>
@@ -560,6 +574,26 @@
                         <div class="bg-neutral-white p-1 md:p-2 rounded-md border border-neutral-light shadow-sm">
                             {#if categoryAnalysisResult}
                                 <div class="space-y-3 p-2 md:p-4">
+                                    <!-- <<< NEW: Static display for Contract Category >>> -->
+                                    <details class="border border-neutral-light rounded-md group" open>
+                                        <summary class="list-none flex items-center justify-between bg-neutral-lightest px-4 py-3 cursor-pointer hover:bg-neutral-lighter transition duration-150 ease-in-out rounded-t-md">
+                                            <div class="flex items-center space-x-2 flex-wrap gap-y-1">
+                                                <span class="font-semibold font-serif text-base text-neutral-darkest">Detected Contract Type</span>
+                                                <!-- Status Badge -->
+                                                <span class={`inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800`}>
+                                                    <svelte:component this={FileIcon} class="w-3 h-3 mr-1"/> Identified
+                                                </span>
+                                            </div>
+                                            <svelte:component this={ChevronDown} class="w-5 h-5 text-neutral-dark group-open:rotate-180 transition-transform flex-shrink-0 ml-2"/>
+                                        </summary>
+                                        <div class="bg-white rounded-b-md p-4 text-sm space-y-2">
+                                             <div class="prose prose-sm max-w-none text-neutral-darkest">
+                                                <p><strong>Identified Type:</strong> {contractCategory}</p> 
+                                             </div>
+                                        </div>
+                                    </details>
+                                    <!-- <<< END: Static display >>> -->
+
                                     {#each Object.entries(categoryAnalysisResult) as [key, result]} 
                                          {@const statusProps = getStatusProps(result.status)}
                                          <details class="border border-neutral-light rounded-md group" open>

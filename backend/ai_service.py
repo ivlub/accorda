@@ -42,7 +42,11 @@ async def generate_text_from_gemini(prompt: str, model_name: str = DEFAULT_MODEL
         logger.info(f"Generating text with model: {model_name}")
         model = genai.GenerativeModel(model_name)
         # Use generate_content_async for compatibility with FastAPI async routes
-        response = await model.generate_content_async(prompt)
+        generation_config = genai.types.GenerationConfig(temperature=0.1)
+        response = await model.generate_content_async(
+            prompt,
+            generation_config=generation_config
+        )
 
         # Basic safety check (can be expanded based on response.prompt_feedback)
         if not response.candidates:
