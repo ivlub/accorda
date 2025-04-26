@@ -2,8 +2,10 @@
   import { fade } from 'svelte/transition';
   import { 
       UploadCloud, Play, Loader2, AlertTriangle, FileText as FileIcon, 
-      CheckCircle2, XCircle, HelpCircle, ArrowRight, ArrowLeft, ChevronDown 
+      CheckCircle2, XCircle, HelpCircle, ArrowRight, ArrowLeft, ChevronDown,
+      Download
   } from 'lucide-svelte';
+  import jsPDF from 'jspdf';
 
   // Define the structure of the expected response
   interface RequirementCheckResult {
@@ -255,6 +257,133 @@
           case 'review_needed': return { color: 'yellow', icon: HelpCircle, label: 'Review Needed' };
           default: return { color: 'gray', icon: HelpCircle, label: 'Unknown' }; 
       }
+  }
+
+  // <<< REVISED: Function to handle PDF export from state >>>
+  async function exportToPdf() {
+    console.log("Exporting analysis state to PDF...");
+
+    if (analysisPhase !== 'done' && analysisPhase !== 'error') {
+      alert("Analysis is not yet complete.");
+      return;
+    }
+
+    try {
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const margin = 15; // Page margin in mm
+      const maxLineWidth = pdf.internal.pageSize.getWidth() - margin * 2;
+      let currentY = margin;
+      const lineSpacing = 7; // Spacing between lines
+      const sectionSpacing = 10; // Spacing between sections
+
+      // --- Helper function to add text and handle page breaks ---
+      const addText = (text: string | string[], options: { size?: number; style?: string } = {}) => {
+          pdf.setFontSize(options.size || 11);
+          pdf.setFont('helvetica', options.style || 'normal');
+          const lines = pdf.splitTextToSize(text, maxLineWidth);
+          
+          lines.forEach((line: string) => {
+              if (currentY + lineSpacing > pdf.internal.pageSize.getHeight() - margin) {
+                  pdf.addPage();
+                  currentY = margin;
+              }
+              pdf.text(line, margin, currentY);
+              currentY += lineSpacing;
+          });
+      };
+
+      // --- Title ---
+      addText('Contract Analysis Report', { size: 18, style: 'bold' });
+      currentY += lineSpacing;
+
+      // --- Filename ---
+      if (uploadedFileName) {
+          addText(`File: ${uploadedFileName}`, { size: 10, style: 'italic' });
+          currentY += sectionSpacing; 
+      }
+
+      // --- Summary --- 
+      if (contractSummary) {
+          addText('Contract Summary', { size: 14, style: 'bold' });
+          currentY += lineSpacing * 0.5;
+          addText(contractSummary);
+          currentY += sectionSpacing;
+      } else if (summaryError) {
+          addText('Contract Summary', { size: 14, style: 'bold' });
+          currentY += lineSpacing * 0.5;
+          addText(`Error generating summary: ${summaryError}`, { style: 'italic' });
+          currentY += sectionSpacing;
+      }
+
+      // --- General Requirements --- 
+      if (generalRequirementsResult) {
+          addText('General Contract Requirements', { size: 14, style: 'bold' });
+          currentY += lineSpacing;
+
+          for (const [category, criteria] of Object.entries(generalRequirementsResult)) {
+              addText(formatCategoryName(category), { size: 12, style: 'bold' });
+              currentY += lineSpacing * 0.5;
+              for (const [key, result] of Object.entries(criteria)) {
+                   if (result && typeof result === 'object' && 'met' in result) {
+                      let statusText = '';
+                      if (result.met === true) statusText = '[Met]';
+                      else if (result.met === false) statusText = '[Not Met]';
+                      else statusText = '[Review Needed]';
+                      
+                      const criterionText = `${formatCriterionKey(key)}: ${statusText} ${result.explanation}`;
+                      addText(criterionText);
+                  }
+              }
+              currentY += lineSpacing; // Space after each category
+          }
+          currentY += sectionSpacing;
+      }
+
+      // --- Category Specific Analysis ---
+      addText('Specific Analysis of the Contract', { size: 14, style: 'bold' });
+      currentY += lineSpacing;
+      
+      if (contractCategory) {
+          addText(`Detected Contract Type: ${contractCategory}`, { size: 12, style: 'bold' });
+          currentY += lineSpacing;
+
+          if (categoryAnalysisResult) {
+               for (const [key, result] of Object.entries(categoryAnalysisResult)) {
+                   const statusProps = getStatusProps(result.status);
+                   let detailText = `[${statusProps.label}]`;
+                   if (result.value) {
+                       detailText += ` - Value: ${result.value}`;
+                   }
+                   if (result.location) {
+                       detailText += ` (Location: ${result.location})`;
+                   }
+
+                   addText(`${formatCriterionKey(key)}: ${detailText}`);
+               }
+          } else if (categoryAnalysisMessage) {
+              addText(categoryAnalysisMessage, { style: 'italic' });
+          }
+      } else {
+          addText('Contract type could not be determined or analysis was skipped.', { style: 'italic' });
+      }
+      currentY += sectionSpacing;
+      
+      // --- Errors (if any during detailed analysis) ---
+      if (analysisError && analysisPhase === 'error') {
+          addText('Analysis Errors', { size: 14, style: 'bold' });
+          currentY += lineSpacing * 0.5;
+          addText(`An error occurred during detailed analysis: ${analysisError}`, { style: 'italic' });
+      }
+
+      // --- Save PDF ---
+      const filename = uploadedFileName ? `Contract_Analysis_${uploadedFileName.split('.')[0]}.pdf` : 'Contract_Analysis.pdf';
+      pdf.save(filename);
+      console.log("State-based PDF exported successfully!");
+
+    } catch (error) {
+      console.error("Error during PDF export:", error);
+      alert(`Failed to generate PDF: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
 </script>
@@ -650,6 +779,20 @@
                     {/if}
                 </section>
             </details> 
+
+            <!-- <<< Add Export Button Back >>> -->
+            <div class="mt-8 flex justify-end">
+                <button
+                    on:click={exportToPdf}
+                    disabled={analysisPhase !== 'done' && analysisPhase !== 'error'}
+                    class="px-4 py-2 bg-neutral-light text-neutral-darkest rounded-md font-semibold text-sm hover:bg-neutral-lighter focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-neutral-medium disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-neutral-light transition duration-150 ease-in-out flex items-center justify-center space-x-2 shadow-sm"
+                >
+                    <svelte:component this={Download} class="w-4 h-4" />
+                    <span>Export Results (PDF)</span>
+                </button>
+            </div>
+            <!-- <<< END: Export Button >>> -->
+
         </div>
     {/if}
 </div> 
