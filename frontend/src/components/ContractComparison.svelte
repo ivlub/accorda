@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { fade } from 'svelte/transition';
-  import { UploadCloud, Scale, Loader2, AlertTriangle, FileUp, FileDiff, Download, BrainCircuit, ChevronDown, ChevronUp, FileText } from 'lucide-svelte';
+  import { UploadCloud, Scale, Loader2, AlertTriangle, FileUp, FileDiff, Download, BrainCircuit, ChevronDown, ChevronUp, FileText, Filter } from 'lucide-svelte';
   import * as Diff from 'diff';
   import * as Diff2Html from 'diff2html';
   import 'diff2html/bundles/css/diff2html.min.css';
@@ -25,6 +25,9 @@
 
   let isExplanationOpen = true;
   let isImpactAnalysisOpen = true;
+
+  let selectedImpactCategories: string[] = [];
+  const allImpactCategories = ['Beneficial', 'Likely Neutral', 'Prejudicial', 'Further Review Required'];
 
   function handleFileSelect(event: Event, fileNumber: 1 | 2) {
       const target = event.target as HTMLInputElement;
@@ -429,6 +432,12 @@
     }
   }
 
+  $: filteredImpactAnalysisResult = impactAnalysisResult 
+      ? impactAnalysisResult.filter(item => 
+          selectedImpactCategories.length === 0 || selectedImpactCategories.includes(item.category)
+        )
+      : [];
+
 </script>
 
 <style>
@@ -568,6 +577,37 @@
         border-top: 1px solid #e5e7eb; /* Separator line when open */
         margin-top: -1px; /* Overlap with header border */
     }
+
+   /* Styles for Category Filter Buttons */
+   .filter-button {
+       display: inline-flex;
+       align-items: center;
+       cursor: pointer;
+       padding: 4px 10px;
+       border: 1px solid #e5e7eb; /* neutral-light */
+       border-radius: 9999px; /* rounded-full */
+       margin-right: 6px;
+       margin-bottom: 6px;
+       transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, color 0.15s ease-in-out;
+       background-color: #ffffff; /* neutral-white */
+       font-size: 0.75rem; /* text-xs */
+       color: #4b5563; /* neutral-dark */
+       user-select: none;
+   }
+    .filter-button.active {
+        border-color: transparent;
+        font-weight: 500;
+    }
+   .filter-button.active.filter-Beneficial { background-color: #dcfce7; color: #16a34a; } 
+   .filter-button.active.filter-LikelyNeutral { background-color: #e0e7ff; color: #4f46e5; }
+   .filter-button.active.filter-Prejudicial { background-color: #fee2e2; color: #dc2626; } 
+   .filter-button.active.filter-FurtherReview { background-color: #fef3c7; color: #d97706; }
+
+   .filter-button:not(.active):hover {
+       background-color: #f9fafb; /* neutral-lightest */
+       border-color: #d1d5db; /* neutral-medium */
+   }
+
 </style>
 
 <div class="max-w-7xl mx-auto">
@@ -732,7 +772,42 @@
                   </div>
               </div>
 
-              {#key impactAnalysisResult || isAnalyzingImpact || impactAnalysisErrorMessage || selectedPerspective}
+              {#if impactAnalysisResult && impactAnalysisResult.length > 0}
+                <div class="mb-4 pb-3 border-b border-neutral-light">
+                  <label class="block text-xs font-medium text-neutral-medium mb-2 flex items-center">
+                     <svelte:component this={Filter} class="w-3 h-3 mr-1"/> 
+                     Filter by Category:
+                  </label>
+                  <div>
+                      {#each allImpactCategories as category}
+                        {@const isActive = selectedImpactCategories.includes(category)}
+                        <button 
+                            class="filter-button {isActive ? 'active' : ''} filter-{category.replace(' ', '')}"
+                            on:click={() => {
+                                if (isActive) {
+                                    selectedImpactCategories = selectedImpactCategories.filter(c => c !== category);
+                                } else {
+                                    selectedImpactCategories = [...selectedImpactCategories, category];
+                                }
+                            }}
+                        >
+                          {category}
+                        </button>
+                      {/each}
+                      {#if selectedImpactCategories.length > 0}
+                        <button 
+                            class="filter-button text-neutral-medium hover:text-red-600 hover:border-red-300 text-xs ml-1"
+                            title="Clear all filters"
+                            on:click={() => selectedImpactCategories = []}
+                        >
+                          &times; Clear
+                        </button>
+                      {/if}
+                  </div>
+                </div>
+              {/if}
+
+              {#key filteredImpactAnalysisResult || isAnalyzingImpact || impactAnalysisErrorMessage || selectedPerspective}
                 <div class="text-sm text-neutral-darkest space-y-3" 
                      in:fade={{ duration: 200, delay: 50 }} 
                      out:fade={{ duration: 150 }}>
@@ -741,8 +816,8 @@
                             <svelte:component this={Loader2} class="animate-spin h-4 w-4 mr-2 text-brand-muted" />
                             Analyzing impact... (This may take a moment)
                         </div>
-                    {:else if impactAnalysisResult && impactAnalysisResult.length > 0}
-                        {#each impactAnalysisResult as item}
+                    {:else if filteredImpactAnalysisResult && filteredImpactAnalysisResult.length > 0}
+                        {#each filteredImpactAnalysisResult as item (item.explanation + item.change_summary)}
                             <div class="impact-item">
                                <div class="impact-item-header">
                                    <span class="impact-category-badge impact-category-{item.category.replace(' ', '')}">{item.category}</span>
@@ -753,7 +828,6 @@
                                    {/if}
                                </div>
                                 <p class="whitespace-pre-wrap">{item.explanation}</p>
-                                
                                 {#if item.change_summary}
                                     <div class="change-summary">
                                          <p><strong>Change Summary:</strong> {item.change_summary}</p>
@@ -761,6 +835,8 @@
                                 {/if}
                             </div>
                         {/each}
+                     {:else if impactAnalysisResult && impactAnalysisResult.length > 0 && filteredImpactAnalysisResult.length === 0}
+                          <p class="text-neutral-medium italic py-4">No results match the selected filter(s).</p>
                      {:else if impactAnalysisResult && impactAnalysisResult.length === 0 && !impactAnalysisErrorMessage}
                          {#if selectedPerspective}  
                             <p class="text-neutral-medium italic py-4">No specific impacts requiring categorization were identified for {selectedPerspective === 'file1' ? uploadedFile1Name : uploadedFile2Name}.</p>
