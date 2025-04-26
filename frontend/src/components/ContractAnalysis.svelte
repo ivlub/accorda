@@ -324,41 +324,45 @@
 
             <!-- General Requirements Section -->
             {#if generalRequirementsResult}
-                <section aria-labelledby="general-results-heading" class="mb-6">
-                    <h3 id="general-results-heading" class="text-lg font-semibold text-neutral-dark mb-3 font-serif">General Contract Requirements</h3>
-                    <div class="bg-neutral-white p-1 md:p-2 rounded-md border border-neutral-light shadow-sm">
-                        <div class="space-y-3 p-2 md:p-4">
-                             {#each Object.entries(generalRequirementsResult) as [category, criteria]}
-                                 <!-- Use helper function for counts -->
-                                 {@const counts = calculateStatusCounts(criteria)}
-                                 {@const isAllGood = counts.falseCount === 0 && counts.maybeCount === 0}
-                                 <details class="border border-neutral-light rounded-md group" open>
-                                     <summary class="list-none flex items-center justify-between bg-neutral-lightest px-4 py-3 cursor-pointer hover:bg-neutral-lighter transition duration-150 ease-in-out rounded-t-md">
-                                         <div class="flex items-center space-x-2 flex-wrap gap-y-1">
-                                             <span class="font-semibold font-serif text-base text-neutral-darkest">{formatCategoryName(category)}</span>
-                                             <!-- Use counts from helper -->
-                                             {#if isAllGood} <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800"><svelte:component this={CheckCircle2} class="w-3 h-3 mr-1"/> All Good</span> {:else} {#if counts.falseCount > 0} <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800"><svelte:component this={XCircle} class="w-3 h-3 mr-1"/> {counts.falseCount}</span> {/if} {#if counts.maybeCount > 0} <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800"><svelte:component this={HelpCircle} class="w-3 h-3 mr-1"/> {counts.maybeCount}</span> {/if} {/if}
-                                         </div>
-                                         <svelte:component this={ChevronDown} class="w-5 h-5 text-neutral-dark group-open:rotate-180 transition-transform flex-shrink-0 ml-2"/>
-                                     </summary>
-                                     <ul class="divide-y divide-neutral-light bg-white rounded-b-md">
-                                         {#each Object.entries(criteria) as [key, result]}
-                                             {#if result && typeof result === 'object' && 'met' in result && 'explanation' in result}
-                                                 <li class="flex items-start p-4 space-x-3 text-sm">
-                                                     {#if result.met === true} <svelte:component this={CheckCircle2} class="w-5 h-5 mt-0.5 flex-shrink-0 text-green-600" strokeWidth={2}/> {:else if result.met === false} <svelte:component this={XCircle} class="w-5 h-5 mt-0.5 flex-shrink-0 text-red-600" strokeWidth={2}/> {:else} <svelte:component this={HelpCircle} class="w-5 h-5 mt-0.5 flex-shrink-0 text-yellow-600" strokeWidth={2}/> {/if}
-                                                     <div class="flex-grow">
-                                                         {#if category !== 'FormalAdequacy'} <p class="font-medium text-neutral-darkest">{formatCriterionKey(key)}</p> {/if}
-                                                         <p class="text-neutral-dark {category === 'FormalAdequacy' ? '' : 'mt-1'}">{result.explanation}</p>
-                                                     </div>
-                                                 </li>
-                                             {/if}
-                                         {/each}
-                                     </ul>
-                                 </details>
-                             {/each}
+                <details class="mb-6 group" open> 
+                    <summary class="list-none cursor-pointer flex items-center justify-between pb-3 border-b border-neutral-light mb-4">
+                         <h3 id="general-results-heading" class="text-lg font-semibold text-neutral-dark font-serif">General Contract Requirements</h3>
+                         <svelte:component this={ChevronDown} class="w-5 h-5 text-neutral-dark group-open:rotate-180 transition-transform flex-shrink-0 ml-2"/>
+                    </summary>
+                     <section aria-labelledby="general-results-heading" >
+                        <div class="bg-neutral-white p-1 md:p-2 rounded-md border border-neutral-light shadow-sm">
+                            <div class="space-y-3 p-2 md:p-4">
+                                {#each Object.entries(generalRequirementsResult) as [category, criteria]}
+                                     <!-- Inner collapsible categories remain -->
+                                     {@const counts = calculateStatusCounts(criteria)}
+                                     {@const isAllGood = counts.falseCount === 0 && counts.maybeCount === 0}
+                                     <details class="border border-neutral-light rounded-md group" open>
+                                         <summary class="list-none flex items-center justify-between bg-neutral-lightest px-4 py-3 cursor-pointer hover:bg-neutral-lighter transition duration-150 ease-in-out rounded-t-md">
+                                              <div class="flex items-center space-x-2 flex-wrap gap-y-1">
+                                                  <span class="font-semibold font-serif text-base text-neutral-darkest">{formatCategoryName(category)}</span>
+                                                  {#if isAllGood} <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800"><svelte:component this={CheckCircle2} class="w-3 h-3 mr-1"/> All Good</span> {:else} {#if counts.falseCount > 0} <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800"><svelte:component this={XCircle} class="w-3 h-3 mr-1"/> {counts.falseCount}</span> {/if} {#if counts.maybeCount > 0} <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800"><svelte:component this={HelpCircle} class="w-3 h-3 mr-1"/> {counts.maybeCount}</span> {/if} {/if}
+                                             </div>
+                                             <svelte:component this={ChevronDown} class="w-5 h-5 text-neutral-dark group-open:rotate-180 transition-transform flex-shrink-0 ml-2"/>
+                                         </summary>
+                                         <ul class="divide-y divide-neutral-light bg-white rounded-b-md">
+                                             {#each Object.entries(criteria) as [key, result]}
+                                                 {#if result && typeof result === 'object' && 'met' in result && 'explanation' in result}
+                                                     <li class="flex items-start p-4 space-x-3 text-sm">
+                                                         {#if result.met === true} <svelte:component this={CheckCircle2} class="w-5 h-5 mt-0.5 flex-shrink-0 text-green-600" strokeWidth={2}/> {:else if result.met === false} <svelte:component this={XCircle} class="w-5 h-5 mt-0.5 flex-shrink-0 text-red-600" strokeWidth={2}/> {:else} <svelte:component this={HelpCircle} class="w-5 h-5 mt-0.5 flex-shrink-0 text-yellow-600" strokeWidth={2}/> {/if}
+                                                         <div class="flex-grow">
+                                                             {#if category !== 'FormalAdequacy'} <p class="font-medium text-neutral-darkest">{formatCriterionKey(key)}</p> {/if}
+                                                             <p class="text-neutral-dark {category === 'FormalAdequacy' ? '' : 'mt-1'}">{result.explanation}</p>
+                                                         </div>
+                                                     </li>
+                                                 {/if}
+                                             {/each}
+                                         </ul>
+                                     </details>
+                                 {/each}
+                             </div>
                          </div>
-                     </div>
-                </section>
+                    </section>
+                </details>
              {:else if analysisPhase === 'general'} 
                 <!-- Show initial loading for general results -->
                  <div class="text-neutral-dark flex items-center justify-center h-full text-center p-10 border border-dashed border-neutral-light rounded-md min-h-[100px]">
@@ -367,64 +371,63 @@
             {/if}
 
             <!-- Category Specific Requirements Section -->
-            <section aria-labelledby="category-results-heading" class="mt-8">
-                {#if analysisPhase === 'category'} 
-                     <!-- Loading state for category analysis -->
-                     <div class="text-neutral-dark flex items-center justify-center text-center p-6 border border-dashed border-neutral-light rounded-md min-h-[100px]">
-                         <div><svelte:component this={Loader2} class="animate-spin h-6 w-6 text-brand-muted mx-auto mb-2" /> Analyzing category-specific requirements...</div>
-                     </div>
-                {:else if analysisPhase === 'done' && contractCategory}
-                    <!-- Display category results once done -->
-                    <h3 id="category-results-heading" class="text-lg font-semibold text-neutral-dark mb-3 font-serif">Specific Requirements for: {contractCategory}</h3>
-                    <div class="bg-neutral-white p-1 md:p-2 rounded-md border border-neutral-light shadow-sm">
-                        {#if categoryAnalysisResult}
-                            <div class="space-y-3 p-2 md:p-4">
-                                {#each Object.entries(categoryAnalysisResult) as [key, result]} 
-                                    <!-- Display individual category criteria using details/summary -->
-                                     <details class="border border-neutral-light rounded-md group" open>
-                                         <summary class="list-none flex items-center justify-between bg-neutral-lightest px-4 py-3 cursor-pointer hover:bg-neutral-lighter transition duration-150 ease-in-out rounded-t-md">
-                                             <div class="flex items-center space-x-2 flex-wrap gap-y-1">
-                                                  <span class="font-semibold font-serif text-base text-neutral-darkest">{formatCriterionKey(key)}</span>
-                                                  <!-- Badges for individual criteria -->
-                                                  {#if result.met === true}
-                                                      <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800"><svelte:component this={CheckCircle2} class="w-3 h-3 mr-1"/> Met</span>
-                                                  {:else if result.met === false}
-                                                      <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800"><svelte:component this={XCircle} class="w-3 h-3 mr-1"/> Not Met</span>
-                                                  {:else}
-                                                      <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800"><svelte:component this={HelpCircle} class="w-3 h-3 mr-1"/> Maybe</span>
-                                                  {/if}
-                                             </div>
-                                             <svelte:component this={ChevronDown} class="w-5 h-5 text-neutral-dark group-open:rotate-180 transition-transform flex-shrink-0 ml-2"/>
-                                         </summary>
-                                         <div class="bg-white rounded-b-md p-4 text-sm">
-                                             <p class="text-neutral-dark">{result.explanation}</p>
-                                         </div>
-                                     </details>
-                                {/each}
-                            </div>
-                        {:else if categoryAnalysisMessage} 
-                             <!-- Message if analysis not available for category -->
-                             <div class="text-neutral-medium px-4 py-6 text-center">
-                                 <p>{categoryAnalysisMessage}</p>
-                             </div>
-                        {/if}
-                    </div>
-                {:else if analysisPhase === 'error' && analysisError && generalRequirementsResult} 
-                     <!-- Show error from second call if first call succeeded -->
-                     <div class="mt-4 p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-700 flex items-start space-x-2">
-                         <svelte:component this={AlertTriangle} class="w-5 h-5 flex-shrink-0 mt-0.5" />
-                         <div>
-                             <span class="font-medium">Category Analysis Failed:</span> {analysisError}
+            <details class="mt-8 group" open> <!-- Collapsible wrapper for category section -->
+                 <summary class="list-none cursor-pointer flex items-center justify-between pb-3 border-b border-neutral-light mb-4">
+                     <h3 id="category-results-heading" class="text-lg font-semibold text-neutral-dark font-serif">
+                        {#if contractCategory}Specific Requirements for: {contractCategory}{:else}Category Specific Requirements{/if}
+                     </h3>
+                     <svelte:component this={ChevronDown} class="w-5 h-5 text-neutral-dark group-open:rotate-180 transition-transform flex-shrink-0 ml-2"/>
+                 </summary>
+                 <section aria-labelledby="category-results-heading" >
+                    {#if analysisPhase === 'category'} 
+                         <!-- Loading state for category analysis -->
+                         <div class="text-neutral-dark flex items-center justify-center text-center p-6 border border-dashed border-neutral-light rounded-md min-h-[100px]">
+                             <div><svelte:component this={Loader2} class="animate-spin h-6 w-6 text-brand-muted mx-auto mb-2" /> Analyzing category-specific requirements...</div>
                          </div>
-                    </div>
-                 {:else}
-                     <!-- Initial placeholder or if general results failed -->
-                     <div class="text-neutral-medium px-4 py-6 text-center border border-dashed border-neutral-light rounded-md min-h-[100px]">
-                         <p>Category-specific analysis will appear here.</p>
-                     </div>
-                {/if}
-            </section>
-            
+                    {:else if analysisPhase === 'done' && contractCategory}
+                        <!-- Display category results once done -->
+                        <div class="bg-neutral-white p-1 md:p-2 rounded-md border border-neutral-light shadow-sm">
+                            {#if categoryAnalysisResult}
+                                <div class="space-y-3 p-2 md:p-4">
+                                    {#each Object.entries(categoryAnalysisResult) as [key, result]} 
+                                        <!-- Inner collapsible criteria remain -->
+                                         <details class="border border-neutral-light rounded-md group" open>
+                                             <summary class="list-none flex items-center justify-between bg-neutral-lightest px-4 py-3 cursor-pointer hover:bg-neutral-lighter transition duration-150 ease-in-out rounded-t-md">
+                                                 <div class="flex items-center space-x-2 flex-wrap gap-y-1">
+                                                      <span class="font-semibold font-serif text-base text-neutral-darkest">{formatCriterionKey(key)}</span>
+                                                      {#if result.met === true} <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800"><svelte:component this={CheckCircle2} class="w-3 h-3 mr-1"/> Met</span> {:else if result.met === false} <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800"><svelte:component this={XCircle} class="w-3 h-3 mr-1"/> Not Met</span> {:else} <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800"><svelte:component this={HelpCircle} class="w-3 h-3 mr-1"/> Maybe</span> {/if}
+                                                 </div>
+                                                 <svelte:component this={ChevronDown} class="w-5 h-5 text-neutral-dark group-open:rotate-180 transition-transform flex-shrink-0 ml-2"/>
+                                             </summary>
+                                             <div class="bg-white rounded-b-md p-4 text-sm">
+                                                 <p class="text-neutral-dark">{result.explanation}</p>
+                                             </div>
+                                         </details>
+                                    {/each}
+                                </div>
+                            {:else if categoryAnalysisMessage} 
+                                 <!-- Message if analysis not available for category -->
+                                 <div class="text-neutral-medium px-4 py-6 text-center">
+                                     <p>{categoryAnalysisMessage}</p>
+                                 </div>
+                            {/if}
+                        </div>
+                    {:else if analysisPhase === 'error' && analysisError && generalRequirementsResult} 
+                         <!-- Show error from second call if first call succeeded -->
+                         <div class="mt-4 p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-700 flex items-start space-x-2">
+                             <svelte:component this={AlertTriangle} class="w-5 h-5 flex-shrink-0 mt-0.5" />
+                             <div>
+                                 <span class="font-medium">Category Analysis Failed:</span> {analysisError}
+                             </div>
+                        </div>
+                     {:else}
+                         <!-- Initial placeholder or if general results failed -->
+                         <div class="text-neutral-medium px-4 py-6 text-center border border-dashed border-neutral-light rounded-md min-h-[100px]">
+                             <p>Category-specific analysis will appear here.</p>
+                         </div>
+                    {/if}
+                </section>
+            </details> 
         </div>
     {/if}
 </div> 
