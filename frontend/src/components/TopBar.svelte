@@ -1,21 +1,43 @@
 <script lang="ts">
-  // Props for user info, notifications etc. can be added later
+  import { Bell, HelpCircle, Settings } from 'lucide-svelte'; // Import Lucide icons
+
+  export let currentView: 'welcome' | 'analysis' | 'comparison';
+
+  const viewTitles = {
+    welcome: 'Dashboard', // Or maybe hide title on welcome?
+    analysis: 'Contract Analysis',
+    comparison: 'Contract Comparison'
+  };
+
+  $: title = viewTitles[currentView];
 </script>
 
 <div class="relative z-10 flex-shrink-0 flex h-16 bg-neutral-white border-b border-neutral-light shadow-sm">
   <div class="flex-1 px-4 flex justify-between sm:px-6 lg:px-8">
-    <div class="flex-1 flex">
-      <!-- Search bar or other elements could go here -->
+    <div class="flex-1 flex items-center">
+      <!-- Current View Title -->
+      {#if currentView !== 'welcome'} 
+        <h1 class="text-lg font-semibold text-neutral-darkest font-serif">{title}</h1>
+      {/if}
+      <!-- Maybe add global search here later -->
     </div>
-    <div class="ml-4 flex items-center md:ml-6">
+    <div class="ml-4 flex items-center md:ml-6 space-x-1 sm:space-x-2">
+      <!-- Placeholder: Notifications -->
+      <button type="button" title="Notifications" class="bg-neutral-white p-1.5 rounded-full text-neutral-dark hover:text-neutral-darkest focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-muted">
+        <span class="sr-only">View notifications</span>
+        <svelte:component this={Bell} class="h-5 w-5" strokeWidth={1.75} />
+      </button>
+
+       <!-- Placeholder: Help/Support -->
+       <button type="button" title="Help" class="bg-neutral-white p-1.5 rounded-full text-neutral-dark hover:text-neutral-darkest focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-muted">
+          <span class="sr-only">Help</span>
+          <svelte:component this={HelpCircle} class="h-5 w-5" strokeWidth={1.75} />
+       </button>
+
       <!-- User profile / settings button placeholder -->
-       <button type="button" class="bg-neutral-white p-1 rounded-full text-neutral-dark hover:text-neutral-darkest focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-muted">
+       <button type="button" title="Settings" class="bg-neutral-white p-1.5 rounded-full text-neutral-dark hover:text-neutral-darkest focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-muted">
         <span class="sr-only">User Settings</span>
-        <!-- Heroicon: cog -->
-        <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-        </svg>
+        <svelte:component this={Settings} class="h-5 w-5" strokeWidth={1.75} />
       </button>
     </div>
   </div>

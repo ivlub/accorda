@@ -1,13 +1,18 @@
 <script lang="ts">
+  import { Home, FileText, GitCompareArrows, Settings, Brain } from 'lucide-svelte'; // Import Lucide icons and Brain icon
+
   export let currentView: 'welcome' | 'analysis' | 'comparison';
   export let navigate: (view: 'welcome' | 'analysis' | 'comparison') => void;
 
-  // Simple Heroicons (replace with actual SVG paths or library)
+  // Placeholder icons (consider a dedicated icon library like heroicons or lucide-svelte later)
   const icons = {
-    analysis: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>`,
-    comparison: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>`,
-    welcome: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>` // Home icon
+    analysis: `<path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />`, // Document Text
+    comparison: `<path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 4.25l-2.25-2.25m0 0l-2.25 2.25M13.5 11.25V17.25" />`, // Document Duplicate
+    welcome: `<path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />` // Home
   }
+
+  const userName = "Sara Mendes"; // Placeholder
+  const userEmail = "sara.mendes@accorda.ai"; // Placeholder
 
 </script>
 
@@ -16,17 +21,19 @@
   <div class="flex flex-col w-64">
     <!-- Sidebar component, swap this element with another sidebar if you like -->
     <div class="flex flex-col flex-grow bg-brand-dark pt-5 pb-4 overflow-y-auto">
-      <div class="flex items-center flex-shrink-0 px-4">
-         <!-- Logo Placeholder -->
-         <span 
-           class="font-semibold text-xl text-neutral-white cursor-pointer tracking-tight"
+      <!-- Logo Area -->
+      <div class="flex items-center flex-shrink-0 px-4 mb-5">
+         <button 
+           class="flex items-center space-x-2 text-neutral-white focus:outline-none" 
            on:click={() => navigate('welcome')}
-           role="button" tabindex="0" 
-           on:keypress={(e) => e.key === 'Enter' && navigate('welcome')}
            aria-label="Go to Accorda home"
          >
-             Accorda
-         </span>
+            <!-- Use Lucide Brain component for Logo -->
+            <div class="h-8 w-8 bg-brand-accent rounded flex items-center justify-center">
+              <svelte:component this={Brain} class="h-5 w-5 text-white" strokeWidth={2} />
+            </div>
+            <span class="font-bold text-xl tracking-tight">Accorda</span>
+         </button>
       </div>
       <nav class="mt-5 flex-1 flex flex-col divide-y divide-neutral-light divide-opacity-10" aria-label="Sidebar">
         <div class="px-2 space-y-1">
@@ -43,9 +50,7 @@
              class:hover:bg-opacity-5={currentView !== 'welcome'}
              aria-current={currentView === 'welcome' ? 'page' : undefined}
            >
-             <svg class="mr-4 flex-shrink-0 h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-               {@html icons.welcome}
-             </svg>
+             <svelte:component this={Home} class="mr-4 flex-shrink-0 h-6 w-6" strokeWidth={1.75} />
              Welcome
            </button>
 
@@ -62,9 +67,7 @@
              class:hover:bg-opacity-5={currentView !== 'analysis'}
              aria-current={currentView === 'analysis' ? 'page' : undefined}
            >
-             <svg class="mr-4 flex-shrink-0 h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                {@html icons.analysis}
-             </svg>
+             <svelte:component this={FileText} class="mr-4 flex-shrink-0 h-6 w-6" strokeWidth={1.75} />
              Contract Analysis
            </button>
 
@@ -81,14 +84,32 @@
              class:hover:bg-opacity-5={currentView !== 'comparison'}
              aria-current={currentView === 'comparison' ? 'page' : undefined}
            >
-             <svg class="mr-4 flex-shrink-0 h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                {@html icons.comparison}
-             </svg>
+             <svelte:component this={GitCompareArrows} class="mr-4 flex-shrink-0 h-6 w-6" strokeWidth={1.75} />
              Contract Comparison
            </button>
         </div>
         <!-- Could add other sections like Settings, Account etc. here -->
       </nav>
+
+      <!-- User Section -->
+       <div class="mt-auto pt-4 border-t border-neutral-light border-opacity-10">
+          <div class="px-4 py-2 flex items-center space-x-3">
+             <!-- Placeholder Avatar -->
+            <div class="flex-shrink-0 h-8 w-8 rounded-full bg-brand-muted flex items-center justify-center text-sm font-medium text-neutral-white">
+              {userName.charAt(0)}
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium text-neutral-white truncate">{userName}</p>
+              <p class="text-xs text-neutral-light truncate">{userEmail}</p>
+            </div>
+             <!-- Optional: Settings/Logout Button -->
+             <button type="button" class="ml-auto flex-shrink-0 bg-brand-dark p-1 rounded-full text-neutral-light hover:text-neutral-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-brand-dark focus:ring-white">
+                <span class="sr-only">User settings</span>
+                 <!-- Icon: Cog -->
+                <svelte:component this={Settings} class="h-5 w-5" strokeWidth={1.75} />
+             </button>
+          </div>
+        </div>
     </div>
   </div>
 </aside> 

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { fade } from 'svelte/transition';
+  import { UploadCloud, Scale, Loader2, AlertTriangle, FileUp, FileDiff } from 'lucide-svelte';
 
   let uploadedFile1: File | null = null;
   let uploadedFile1Name: string | null = null;
@@ -43,8 +44,6 @@
 </script>
 
 <div class="max-w-7xl mx-auto">
-  <h1 class="text-3xl font-serif font-semibold text-brand-dark mb-6 border-b border-neutral-light pb-3">Contract Comparison</h1>
-
   <div class="space-y-8">
     <!-- Upload Section -->
     <section aria-labelledby="upload-heading-comparison">
@@ -54,7 +53,7 @@
         <div class="bg-neutral-white p-4 rounded-md border border-neutral-light">
           <h3 class="text-sm font-semibold text-neutral-darkest mb-3">Contract 1</h3>
           <label for="contract1-upload" class="relative flex flex-col items-center justify-center w-full p-5 bg-neutral-white border-2 border-neutral-light border-dashed rounded-md cursor-pointer hover:border-brand-muted transition duration-150 ease-in-out group text-center min-h-[120px]">
-              <svg class="w-8 h-8 text-neutral-medium group-hover:text-brand-muted mb-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>
+              <svelte:component this={UploadCloud} class="w-8 h-8 text-neutral-medium group-hover:text-brand-muted mb-1" strokeWidth={1.5}/>
               <p class="text-sm text-neutral-dark group-hover:text-brand-dark">
                   {#if uploadedFile1Name}<span class="font-medium break-all">{uploadedFile1Name}</span>{:else}<span class="font-medium text-brand-muted">Browse files</span> or drag here{/if}
               </p>
@@ -68,7 +67,7 @@
          <div class="bg-neutral-white p-4 rounded-md border border-neutral-light">
           <h3 class="text-sm font-semibold text-neutral-darkest mb-3">Contract 2</h3>
           <label for="contract2-upload" class="relative flex flex-col items-center justify-center w-full p-5 bg-neutral-white border-2 border-neutral-light border-dashed rounded-md cursor-pointer hover:border-brand-muted transition duration-150 ease-in-out group text-center min-h-[120px]">
-              <svg class="w-8 h-8 text-neutral-medium group-hover:text-brand-muted mb-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>
+              <svelte:component this={UploadCloud} class="w-8 h-8 text-neutral-medium group-hover:text-brand-muted mb-1" strokeWidth={1.5}/>
               <p class="text-sm text-neutral-dark group-hover:text-brand-dark">
                   {#if uploadedFile2Name}<span class="font-medium break-all">{uploadedFile2Name}</span>{:else}<span class="font-medium text-brand-muted">Browse files</span> or drag here{/if}
               </p>
@@ -91,13 +90,10 @@
         class="px-8 py-2.5 bg-brand-dark text-white rounded-md font-semibold text-sm hover:bg-neutral-darkest focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-dark disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-neutral-medium transition duration-150 ease-in-out inline-flex items-center justify-center space-x-2 shadow-sm"
       >
         {#if isComparing}
-          <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+          <svelte:component this={Loader2} class="animate-spin h-4 w-4 text-white" />
           <span>Comparing...</span>
         {:else}
-          <!-- Icon: scale -->
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
-            <path fill-rule="evenodd" d="M10.53 2.47a.75.75 0 00-1.06 0L6.22 5.72H3a.75.75 0 000 1.5h1.04l-.46 2.45a.75.75 0 001.45.27l.58-3.09h4.38l.58 3.09a.75.75 0 001.45-.27l-.46-2.45H17a.75.75 0 000-1.5h-3.22L10.53 2.47zm-1.06 9.78a.75.75 0 00-1.06 0L5 15.5h2.25a.75.75 0 000-1.5H4.32l3.11-3.28a.75.75 0 001.06 1.06zm2.12 0a.75.75 0 001.06 0l3.11 3.28H15.75a.75.75 0 000 1.5H18a.75.75 0 00.53-1.28l-3.28-3.11a.75.75 0 00-1.06 0z" clip-rule="evenodd" />
-          </svg>
+          <svelte:component this={Scale} class="w-5 h-5" />
           <span>Compare Contracts</span>
         {/if}
       </button>
@@ -112,7 +108,7 @@
               <div class="w-full h-full flex items-center justify-center text-center" in:fade={{ duration: 300 }} out:fade={{ duration: 150 }}>
                   {#if isComparing}
                       <div class="text-neutral-dark">
-                          <svg class="animate-spin h-6 w-6 text-brand-muted mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                          <svelte:component this={Loader2} class="animate-spin h-6 w-6 text-brand-muted mx-auto mb-2" />
                           Comparing Documents...
                       </div>
                   {:else if comparisonResult}
@@ -121,15 +117,12 @@
                       </div>
                   {:else if errorMessage && (!uploadedFile1 || !uploadedFile2)}
                       <div class="text-red-600 px-4">
-                          <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mx-auto mb-1" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
+                          <svelte:component this={AlertTriangle} class="h-8 w-8 mx-auto mb-1" strokeWidth={1.5} />
                           {errorMessage}
                       </div>
                   {:else}
                       <div class="text-neutral-medium px-4">
-                          <!-- Icon: document duplicate -->
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-12 h-12 mx-auto mb-2 text-neutral-light">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 4.25l-2.25-2.25m0 0l-2.25 2.25M13.5 11.25V17.25" />
-                          </svg>
+                           <svelte:component this={FileDiff} class="w-12 h-12 mx-auto mb-2 text-neutral-light" strokeWidth={1.5} />
                           Comparison results will be displayed here.
                       </div>
                   {/if}

@@ -24,7 +24,7 @@
   <!-- Content Area -->
   <div class="flex-1 flex flex-col overflow-hidden">
     <!-- Minimal Top Bar (Optional) -->
-    <TopBar /> 
+    <TopBar {currentView} /> 
 
     <!-- Main Content Scroll Area -->
     <main class="flex-1 overflow-x-hidden overflow-y-auto bg-neutral-lightest" id="main-content">

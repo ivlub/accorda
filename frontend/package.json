@@ -13,6 +13,7 @@
     "@tailwindcss/forms": "^0.5.10",
     "@tsconfig/svelte": "^5.0.2",
     "autoprefixer": "^10.4.16",
+    "lucide-svelte": "^0.503.0",
     "postcss": "^8.4.32",
     "svelte": "^4.2.8",
     "svelte-preprocess": "^5.1.3",
