@@ -3,21 +3,21 @@
     "criteria": [
       {"id": "date_of_formation", "description": "Extract the effective date or date the agreement was formed."},
       {"id": "jurisdiction", "description": "Extract the relevant jurisdiction or jurisdiction clause."},
-      {"id": "parties_identification", "description": "Extract the full names, addresses, and representative details (if mentioned) for all parties (Disclosing and Receiving)."},
-      {"id": "definition_confidential_info", "description": "Extract the definition of 'Confidential Information', including any specific examples or exclusions mentioned."},
+      {"id": "parties_of_the_contract", "description": "Extract the full names, addresses, and representative details (if mentioned) for all parties (Disclosing and Receiving)."},
+      {"id": "definitions", "description": "Extract all the definitions mentioned in the Contract, including any specific examples or exclusions mentioned."},
       {"id": "beneficiaries", "description": "Extract any mention of third-party beneficiaries."},
       {"id": "object_of_the_contract", "description": "Extract the stated purpose or object of the NDA (e.g., specific business opportunity, discussion topic)."},
       {"id": "social_function_of_the_contract", "description": "Extract any clauses describing the broader social or economic purpose of the contract, if explicitly stated."},
       {"id": "obligations_of_the_disclosing_party", "description": "Extract the obligations specifically placed upon the Disclosing Party."},
       {"id": "obligations_of_the_receiving_party", "description": "Extract the obligations placed upon the Receiving Party (e.g., non-disclosure, non-use, return/destruction)."},
-      {"id": "rights_disclosing", "description": "Extract the rights explicitly granted to or retained by the Disclosing Party."},
-      {"id": "rights_receiving", "description": "Extract the rights explicitly granted to the Receiving Party (e.g., right to use for evaluation)."},
+      {"id": "rights_of_the_disclosing_party", "description": "Extract the rights explicitly granted to or retained by the Disclosing Party."},
+      {"id": "rights_of_the_receiving_party", "description": "Extract the rights explicitly granted to the Receiving Party (e.g., right to use for evaluation)."},
       {"id": "effect_clauses", "description": "Extract clauses defining the duration (term) and any conditions affecting the agreement's effect or validity."},
       {"id": "termination", "description": "Extract the conditions or process for terminating the agreement itself ."},
-      {"id": "penalty_clause", "description": "Extract any specific penalties mentioned for breach of the agreement. Say it is: compensatory or punitive (when applicable)."},
+      {"id": "penalty_clauses", "description": "Extract any specific penalties mentioned for breach of the agreement. Say it is: compensatory or punitive (when applicable)."},
       {"id": "remedies", "description": "Extract clauses mentioning available remedies (e.g., injunctive relief, damages)."},
-      {"id": "adr_clause", "description": "Extract any clause related to Alternative Dispute Resolution (e.g., arbitration, mediation, negotiation)."},
-      {"id": "governing_law_clause", "description": "Extract the specific clause stating the governing law."}
+      {"id": "alternative_dispute_resolution_clauses", "description": "Extract any clause related to Alternative Dispute Resolution (e.g., arbitration, mediation, negotiation)."},
+      {"id": "governing_law_clauses", "description": "Extract the specific clause stating the governing law."}
     ],
     "output_format_example": {
       "date_of_formation": {

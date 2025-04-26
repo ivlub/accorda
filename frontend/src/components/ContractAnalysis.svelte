@@ -373,6 +373,86 @@
                 <p class="text-sm text-neutral-medium mb-4">File: <span class="font-medium text-neutral-dark">{uploadedFileName}</span></p>
              {/if}
 
+             <!-- <<< NEW: Analysis Overview Section >>> -->
+             <section aria-labelledby="overview-heading" class="mb-6 bg-neutral-white p-4 rounded-md border border-neutral-light shadow-sm">
+                <h3 id="overview-heading" class="text-base font-semibold text-neutral-darkest mb-3 font-serif border-b border-neutral-light pb-2">Analysis Overview</h3>
+
+                {#if analysisPhase === 'summary' || analysisPhase === 'general' || analysisPhase === 'category'}
+                    <!-- Loading State -->
+                    <div class="text-neutral-dark flex items-center space-x-2 text-sm">
+                        <svelte:component this={Loader2} class="animate-spin h-4 w-4 text-brand-muted" />
+                        <span>Analysis in progress...</span>
+                    </div>
+                {:else if analysisPhase === 'error'}
+                    <!-- Error State -->
+                     <div class="text-sm text-red-700 flex items-start space-x-2">
+                         <svelte:component this={AlertTriangle} class="w-5 h-5 flex-shrink-0 mt-0.5" />
+                         <div>
+                             <span class="font-medium">Analysis encountered issues.</span> 
+                             {#if summaryError}<p class="text-xs mt-1">Summary Error: {summaryError}</p>{/if}
+                             {#if analysisError}<p class="text-xs mt-1">Detailed Analysis Error: {analysisError}</p>{/if}
+                         </div>
+                    </div>
+                {:else if analysisPhase === 'done'}
+                     <!-- Completed State -->
+                     <div class="space-y-2 text-sm">
+                         <div class="flex items-center space-x-2">
+                             <svelte:component this={CheckCircle2} class="w-5 h-5 text-green-600 flex-shrink-0" />
+                             <span class="text-neutral-darkest">Analysis complete for <span class="font-medium">{uploadedFileName}</span>.</span>
+                         </div>
+
+                         <!-- General Req Summary -->
+                         {#if generalRequirementsResult}
+                             {@const generalCounts = Object.values(generalRequirementsResult).reduce((acc, criteria) => {
+                                 const { falseCount, maybeCount } = calculateStatusCounts(criteria);
+                                 acc.falseCount += falseCount;
+                                 acc.maybeCount += maybeCount;
+                                 return acc;
+                             }, { falseCount: 0, maybeCount: 0 })}
+                             <div class="flex items-center space-x-2 pl-7">
+                                 <span class="text-xs text-neutral-medium">General:</span>
+                                 {#if generalCounts.falseCount === 0 && generalCounts.maybeCount === 0}
+                                     <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800"><svelte:component this={CheckCircle2} class="w-3 h-3 mr-0.5"/> Looks good</span>
+                                 {:else}
+                                     {#if generalCounts.falseCount > 0} <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800"><svelte:component this={XCircle} class="w-3 h-3 mr-0.5"/> {generalCounts.falseCount} Failed</span> {/if}
+                                     {#if generalCounts.maybeCount > 0} <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800"><svelte:component this={HelpCircle} class="w-3 h-3 mr-0.5"/> {generalCounts.maybeCount} Review</span> {/if}
+                                 {/if}
+                             </div>
+                         {/if}
+
+                         <!-- Category Req Summary -->
+                         {#if contractCategory}
+                            <div class="flex items-center space-x-2 pl-7">
+                                <span class="text-xs text-neutral-medium">Category ({contractCategory}):</span>
+                                {#if categoryAnalysisResult}
+                                     {@const categoryCounts = Object.values(categoryAnalysisResult).reduce((acc, result) => {
+                                        if (result.status === 'missing') acc.missing++;
+                                        if (result.status === 'review_needed') acc.review++;
+                                        return acc;
+                                    }, { missing: 0, review: 0 })}
+                                    {#if categoryCounts.missing === 0 && categoryCounts.review === 0}
+                                         <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800"><svelte:component this={CheckCircle2} class="w-3 h-3 mr-0.5"/> All Extracted</span>
+                                    {:else}
+                                        {#if categoryCounts.missing > 0} <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800"><svelte:component this={XCircle} class="w-3 h-3 mr-0.5"/> {categoryCounts.missing} Missing</span> {/if}
+                                        {#if categoryCounts.review > 0} <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800"><svelte:component this={HelpCircle} class="w-3 h-3 mr-0.5"/> {categoryCounts.review} Review</span> {/if}
+                                    {/if}
+                                {:else if categoryAnalysisMessage}
+                                    <span class="text-xs text-neutral-medium italic">{categoryAnalysisMessage}</span>
+                                {:else}
+                                     <span class="text-xs text-neutral-medium italic">No specific analysis performed.</span>
+                                {/if}
+                            </div>
+                         {:else}
+                             <div class="pl-7 text-xs text-neutral-medium italic">Category not determined or analysis skipped.</div>
+                         {/if}
+                     </div>
+                {:else}
+                     <!-- Idle/Initial State -->
+                     <p class="text-sm text-neutral-medium">Analysis overview will appear here once completed.</p>
+                {/if}
+             </section>
+             <!-- <<< END: Analysis Overview Section >>> -->
+
              <!-- <<< START: Summary Section >>> -->
              <details class="mb-6 group" open>
                  <summary class="list-none cursor-pointer flex items-center justify-between pb-3 border-b border-neutral-light mb-4">
