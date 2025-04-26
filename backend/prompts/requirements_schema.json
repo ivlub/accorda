@@ -43,7 +43,7 @@
         "criteria": [
           {
             "id": "formal_requirements_met",
-            "description": "The offer complies with the form requirements appropriate to the type of contract being formed. Check national provisions governing the specific contract type for mandatory form requirements."
+            "description": "Assess if the document appears to comply with standard contract formalities (e.g., signatures). A definitive check requires verifying specific legal requirements in the relevant jurisdiction for the contract type, which is outside the scope of this analysis."
           }
         ]
       }

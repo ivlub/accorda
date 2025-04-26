@@ -489,6 +489,13 @@ async def check_contract_requirements(file: UploadFile = File(...)):
             # Validate the structure using the Pydantic model
             validated_response = ContractRequirementsResponse(**ai_response_data)
             logger.info(f"[Requirements] Successfully parsed and validated AI response for {filename}")
+
+            # --- Override Formal Adequacy --- 
+            logger.info(f"[Requirements] Overriding FormalAdequacy result for {filename}")
+            validated_response.FormalAdequacy.formal_requirements_met.met = "maybe"
+            validated_response.FormalAdequacy.formal_requirements_met.explanation = "For formal adequacy, verify the applicable legal requirements in the relevant jurisdiction for the specific type of contract."
+            # --------------------------------
+
             return validated_response
         except json.JSONDecodeError:
             logger.error(f"[Requirements] Failed to decode AI response JSON for {filename}. Cleaned Response: {ai_response_json_str}", exc_info=True) # Log the cleaned string
