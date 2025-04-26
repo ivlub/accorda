@@ -5,8 +5,9 @@
   import ContractComparison from './components/ContractComparison.svelte';
   import Sidebar from './components/Sidebar.svelte';
   import TopBar from './components/TopBar.svelte'; // Minimal top bar
+  import ContractSummary from './components/ContractSummary.svelte'; // Import the new component
 
-  type View = 'welcome' | 'analysis' | 'comparison';
+  type View = 'welcome' | 'analysis' | 'comparison' | 'summary'; // Add 'summary'
   let currentView: View = 'welcome';
 
   function navigate(view: View) {
@@ -37,6 +38,8 @@
             <div class="p-6 md:p-10"> <ContractAnalysis /> </div>
           {:else if currentView === 'comparison'}
              <div class="p-6 md:p-10"> <ContractComparison /> </div>
+          {:else if currentView === 'summary'} 
+             <div class="p-6 md:p-10"> <ContractSummary /> </div>
           {/if}
         </div>
       {/key}

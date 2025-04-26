@@ -81,6 +81,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# --- Health check / Hello World Endpoint --- 
 @app.get("/api/hello")
 async def read_root():
     return {"message": "Hello from FastAPI!"}
@@ -239,7 +240,6 @@ async def categorize_contract(file: UploadFile = File(...)):
         logger.info(f"[Categorize] Received category suggestion '{suggested_category}' for {filename}")
 
         # Optional: Validate if the category is in our list (AI might hallucinate)
-        #TODO here: iterate through the list and check if the suggested category is in the list. if not, try aagain. if we fail two times, return other. We will use general requirements then. 
         if suggested_category not in CONTRACT_CATEGORIES:
             logger.warning(f"[Categorize] AI suggested category '{suggested_category}' which is not in the predefined list for {filename}. Using 'Other'.")
             final_category = "Other"
@@ -263,6 +263,88 @@ async def categorize_contract(file: UploadFile = File(...)):
                 logger.info(f"[Categorize] Successfully deleted temporary file: {temp_file_path}")
             except Exception as del_e:
                 logger.error(f"[Categorize] Failed to delete temporary file {temp_file_path}: {del_e}")
+        # Close the uploaded file handle
+        if file:
+            await file.close()
+
+# --- New Summary Endpoint --- 
+
+@app.post("/api/analyze/summary")
+async def summarize_contract(file: UploadFile = File(...)):
+    """Receives a contract file, extracts text, asks AI to summarize it, and returns the summary."""
+    
+    if not jinja_env:
+         raise HTTPException(status_code=500, detail="Template engine not initialized. Check server logs.")
+
+    filename = file.filename
+    if not filename:
+        raise HTTPException(status_code=400, detail="No filename provided.")
+        
+    # Check supported file types
+    file_extension = Path(filename).suffix.lower()
+    if file_extension not in [".pdf", ".docx"]:
+        raise HTTPException(status_code=415, detail=f"Unsupported file type: '{file_extension}'. Only .pdf and .docx supported for summarization.")
+
+    temp_file_path = UPLOAD_DIR / f"summary_{filename}" # Use prefix to avoid potential clashes
+    logger.info(f"[Summary] Receiving file: {filename}. Saving temporarily to {temp_file_path}")
+
+    extracted_content = None
+    try:
+        # 1. Save file temporarily
+        with temp_file_path.open("wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+            logger.info(f"[Summary] Successfully saved temporary file: {temp_file_path}")
+
+        # 2. Extract text
+        extracted_content = extract_text(str(temp_file_path))
+        if not extracted_content:
+            logger.error(f"[Summary] Text extraction failed or yielded empty content for: {filename}")
+            raise HTTPException(status_code=500, detail="Failed to extract text from the file. It might be corrupted, empty, or password-protected.")
+        logger.info(f"[Summary] Successfully extracted text from {filename}. Length: {len(extracted_content)}")
+        
+        # Truncate very long text (consider a larger limit for summaries?)
+        MAX_TEXT_LENGTH = 100000 # Example limit, adjust based on model and needs. TODO: evaluate what this should be 
+        if len(extracted_content) > MAX_TEXT_LENGTH:
+             logger.warning(f"[Summary] Truncating text for {filename} from {len(extracted_content)} to {MAX_TEXT_LENGTH} characters.")
+             extracted_content = extracted_content[:MAX_TEXT_LENGTH] + "... [TRUNCATED]"
+
+        # 3. Prepare the prompt using Jinja template
+        try:
+            template = jinja_env.get_template("summary_prompt.jinja")
+            prompt = template.render(document_text=extracted_content)
+            logger.info(f"[Summary] Generated prompt for {filename}")
+        except Exception as template_e:
+            logger.error(f"[Summary] Failed to render Jinja template: {template_e}", exc_info=True)
+            raise HTTPException(status_code=500, detail="Internal server error: Failed to prepare analysis prompt.")
+
+        # 4. Call the AI service
+        logger.info(f"[Summary] Sending request to AI for {filename}")
+        ai_response_raw = await generate_text_from_gemini(prompt) # Consider using a specific model if needed
+        
+        if ai_response_raw.startswith("Error:"):
+            logger.error(f"[Summary] AI service returned an error for {filename}: {ai_response_raw}")
+            raise HTTPException(status_code=502, detail=f"AI service failed: {ai_response_raw}")
+        
+        # 5. Process AI response (basic cleanup)
+        summary_text = ai_response_raw.strip()
+        logger.info(f"[Summary] Received summary for {filename}. Length: {len(summary_text)}")
+
+        return {"filename": filename, "summary": summary_text}
+
+    except HTTPException as http_exc:
+        # Re-raise known HTTP exceptions
+        raise http_exc
+    except Exception as e:
+        logger.error(f"[Summary] Error processing file {filename}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred during summarization: {e}")
+    finally:
+        # 6. Clean up temporary file
+        if temp_file_path and temp_file_path.exists():
+            try:
+                temp_file_path.unlink()
+                logger.info(f"[Summary] Successfully deleted temporary file: {temp_file_path}")
+            except Exception as del_e:
+                logger.error(f"[Summary] Failed to delete temporary file {temp_file_path}: {del_e}")
         # Close the uploaded file handle
         if file:
             await file.close()
