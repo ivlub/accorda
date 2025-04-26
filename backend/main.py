@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, File, UploadFile
+from fastapi import FastAPI, HTTPException, File, UploadFile, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import List, Literal, Dict
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 import json
+import uuid
 
 # Import services
 from ai_service import generate_text_from_gemini
@@ -180,6 +181,95 @@ async def handle_text_extraction(file: UploadFile = File(...) ):
         # Close the uploaded file handle
         await file.close()
 
+# --- Contract Comparison Endpoint ---
+
+@app.post("/api/compare")
+async def compare_contracts(file1: UploadFile = File(...), file2: UploadFile = File(...)):
+    """
+    Receives two contract files (PDF/DOCX), extracts text, 
+    and returns the raw text content of both files as JSON.
+    """
+    
+    # Validate filenames and types
+    for file in [file1, file2]:
+        if not file.filename:
+            raise HTTPException(status_code=400, detail="One or both files are missing filenames.")
+        file_extension = Path(file.filename).suffix.lower()
+        if file_extension not in [".pdf", ".docx"]:
+             raise HTTPException(status_code=415, detail=f"Unsupported file type: '{file_extension}' in {file.filename}. Only .pdf and .docx supported.")
+
+    # Use unique IDs for temp files
+    unique_id_1 = uuid.uuid4()
+    unique_id_2 = uuid.uuid4()
+    temp_file_path_1 = UPLOAD_DIR / f"compare_{unique_id_1}_{file1.filename}"
+    temp_file_path_2 = UPLOAD_DIR / f"compare_{unique_id_2}_{file2.filename}"
+    
+    logger.info(f"[Compare] Receiving files: {file1.filename}, {file2.filename}")
+    extracted_text_1 = None
+    extracted_text_2 = None
+
+    try:
+        # 1. Save file 1
+        logger.info(f"[Compare] Saving temp file 1: {temp_file_path_1}")
+        with temp_file_path_1.open("wb") as buffer:
+            shutil.copyfileobj(file1.file, buffer)
+
+        # 2. Save file 2
+        logger.info(f"[Compare] Saving temp file 2: {temp_file_path_2}")
+        with temp_file_path_2.open("wb") as buffer:
+            shutil.copyfileobj(file2.file, buffer)
+
+        # 3. Extract text from file 1
+        logger.info(f"[Compare] Extracting text from {file1.filename}")
+        extracted_text_1 = extract_text(str(temp_file_path_1))
+        if extracted_text_1 is None:
+            # Use a more descriptive error or default to empty string if preferred
+            logger.error(f"[Compare] Text extraction failed for {file1.filename}. Returning empty text.")
+            extracted_text_1 = "" # Or raise HTTPException
+            # raise HTTPException(status_code=500, detail=f"Failed to extract text from {file1.filename}.")
+
+        # 4. Extract text from file 2
+        logger.info(f"[Compare] Extracting text from {file2.filename}")
+        extracted_text_2 = extract_text(str(temp_file_path_2))
+        if extracted_text_2 is None:
+            logger.error(f"[Compare] Text extraction failed for {file2.filename}. Returning empty text.")
+            extracted_text_2 = "" # Or raise HTTPException
+            # raise HTTPException(status_code=500, detail=f"Failed to extract text from {file2.filename}.")
+            
+        logger.info(f"[Compare] Text extracted successfully for {file1.filename} and {file2.filename}")
+
+        # 5. Return extracted texts as JSON
+        return {
+            "filename1": file1.filename,
+            "text1": extracted_text_1,
+            "filename2": file2.filename,
+            "text2": extracted_text_2
+        }
+
+    except HTTPException as http_exc:
+        # Re-raise client/server errors related to file handling/extraction
+        raise http_exc
+    except Exception as e:
+        logger.error(f"[Compare] Error during text extraction: {e}", exc_info=True)
+        # Ensure text defaults are set even if unexpected error occurs before extraction
+        if extracted_text_1 is None: extracted_text_1 = "Error extracting content."
+        if extracted_text_2 is None: extracted_text_2 = "Error extracting content."
+        # Optionally return error within JSON or raise HTTP exception
+        # return {"error": f"An unexpected error occurred: {e}"}
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred during comparison setup: {e}")
+    finally:
+        # 6. Clean up temporary files
+        for temp_path in [temp_file_path_1, temp_file_path_2]:
+            if temp_path and temp_path.exists():
+                try:
+                    temp_path.unlink()
+                    logger.info(f"[Compare] Deleted temporary file: {temp_path}")
+                except Exception as del_e:
+                    logger.error(f"[Compare] Failed to delete temporary file {temp_path}: {del_e}")
+        # Close file handles
+        await file1.close()
+        await file2.close()
+        
 # --- Internal Helper Functions ---
 
 async def _get_contract_category(document_text: str, filename: str) -> str:

@@ -1,6 +1,10 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { fade } from 'svelte/transition';
   import { UploadCloud, Scale, Loader2, AlertTriangle, FileUp, FileDiff } from 'lucide-svelte';
+  import * as Diff from 'diff';
+  import * as Diff2Html from 'diff2html';
+  import 'diff2html/bundles/css/diff2html.min.css';
 
   let uploadedFile1: File | null = null;
   let uploadedFile1Name: string | null = null;
@@ -32,9 +36,127 @@
       if (!uploadedFile1 || !uploadedFile2) { errorMessage = "Please select two contract files."; return; }
       errorMessage = null; isComparing = true; comparisonResult = null;
       console.log(`Starting comparison between ${uploadedFile1Name} and ${uploadedFile2Name}...`);
-      await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate API call
-      comparisonResult = `<h4 class="font-serif text-lg font-semibold mb-3 text-neutral-darkest">Comparison Summary</h4><div class="grid grid-cols-2 gap-4 mb-3 text-sm"><p>File 1: <span class="font-medium">${uploadedFile1Name}</span></p><p>File 2: <span class="font-medium">${uploadedFile2Name}</span></p></div><p class="text-sm mb-2">Key Differences:</p><ul class="list-disc pl-5 text-sm space-y-1"><li>Discrepancy found in Section 3.1 (Payment Terms).</li><li>Section 5.2 (Liability Cap) differs significantly.</li><li>Minor wording changes in Confidentiality Clause (Section 9).</li></ul><p class="text-sm mt-3">Similarity Score: <span class="font-semibold text-green-700">85%</span></p>`; // Example Rich Text
-      isComparing = false;
+
+      const formData = new FormData();
+      formData.append('file1', uploadedFile1);
+      formData.append('file2', uploadedFile2);
+
+      try {
+          const response = await fetch('/api/compare', {
+              method: 'POST',
+              body: formData,
+          });
+          console.log('API Response Status:', response.status);
+
+          if (!response.ok) {
+              const errorText = await response.text();
+              console.error('API Error Response Text:', errorText);
+              throw new Error(response.statusText + (errorText ? `: ${errorText}` : ''));
+          }
+
+          const data = await response.json();
+          console.log('Received data from API:', data); // Log received data
+          
+          try {
+              // 1. Generate line diffs using 'diff' library
+              const lineDiffs: Diff.Change[] = Diff.diffLines(data.text1 || '', data.text2 || '');
+              console.log('Generated Line Diffs:', lineDiffs); // Log the raw line diffs
+
+              // 2. Construct the input structure for Diff2Html
+              // diff2html expects an array of file diff objects.
+              // We'll create one file diff object representing the comparison.
+              const diffJson = [
+                  {
+                      blocks: [] as any[], // Use 'any[]' for blocks for now, structure is complex
+                      // Correctly return sum from reduce and type it
+                      deletedLines: lineDiffs.filter((part: Diff.Change) => part.removed).reduce((sum: number, part: Diff.Change): number => sum + (part.count || 0), 0),
+                      addedLines: lineDiffs.filter((part: Diff.Change) => part.added).reduce((sum: number, part: Diff.Change): number => sum + (part.count || 0), 0),
+                      isGitDiff: false, // Indicate it's not a git-specific diff
+                      isCombined: false, // Add missing required property
+                      oldName: data.filename1 || 'file1',
+                      newName: data.filename2 || 'file2',
+                      language: 'plaintext', // Or try to detect? Start simple.
+                      hunks: [] // Keeping hunks empty for now
+                  }
+              ];
+
+              // Attempt to structure line diffs into blocks for diff2html
+              let currentBlock: { header: string; lines: any[]; oldStartLine: number; newStartLine: number; } | null = null;
+              let oldLineNum = 1;
+              let newLineNum = 1;
+
+              // Explicitly type part in forEach
+              lineDiffs.forEach((part: Diff.Change) => {
+                  const lines = part.value.split('\n');
+                  if (lines[lines.length - 1] === '') lines.pop(); 
+
+                  // Explicitly type lineContent in forEach
+                  lines.forEach((lineContent: string, index: number) => {
+                      let type;
+                      if (part.added) {
+                          type = 'insert';
+                      } else if (part.removed) {
+                          type = 'delete';
+                      } else {
+                          type = 'context';
+                      }
+
+                      // diff2html expects line objects within blocks
+                      const lineObj = {
+                          content: lineContent,
+                          type: type,
+                          oldNumber: part.removed || !part.added ? oldLineNum : undefined,
+                          newNumber: part.added || !part.added ? newLineNum : undefined,
+                      };
+                      
+                      // Simple block creation - might need improvement
+                      if (!currentBlock) {
+                           // Heuristic for header - might need adjustment
+                          currentBlock = { header: `Block starting near line ${oldLineNum}/${newLineNum}`, lines: [], oldStartLine: oldLineNum, newStartLine: newLineNum }; 
+                          diffJson[0].blocks.push(currentBlock as any);
+                      }
+                      currentBlock.lines.push(lineObj);
+                      
+                      // Increment line numbers
+                      if (!part.added) oldLineNum++;
+                      if (!part.removed) newLineNum++;
+
+                      // Crude way to split blocks - could be improved
+                      // if (type === 'context' && index === lines.length - 1) { 
+                      //     currentBlock = null;
+                      // }
+                  });
+                    // Reset block after each part? Might group too much or too little.
+                    // currentBlock = null;
+              });
+
+              console.log('Constructed Diff JSON for Diff2Html:', diffJson); // Log the constructed JSON
+
+              // 3. Generate HTML using diff2html from the constructed JSON structure
+              comparisonResult = Diff2Html.html(diffJson, { // Pass constructed JSON here
+                  drawFileList: false, 
+                  outputFormat: 'side-by-side', 
+                  renderNothingWhenEmpty: false 
+              });
+              console.log('Generated HTML:', comparisonResult); // Log the final HTML
+          } catch (genError: any) {
+              console.error("Error generating diff structure or HTML:", genError);
+              errorMessage = `Failed to render comparison: ${genError.message}`;
+              comparisonResult = null; // Clear result on error
+          }
+          
+          // Only log success if HTML generation didn't throw
+          if (comparisonResult) {
+              console.log("Comparison successful, diff generated.");
+          }
+
+      } catch (error: any) {
+          console.error("Comparison failed:", error);
+          errorMessage = `Comparison failed: ${error.message || 'Network error'}`;
+          comparisonResult = null;
+      } finally {
+          isComparing = false;
+      }
   }
 
   // Reusable File Input Component (Conceptual)
@@ -42,6 +164,23 @@
   // function FileInputArea({ fileNumber, fileName, onFileSelect }) { ... }
 
 </script>
+
+<style>
+  /* Target the diff container specifically within this component */
+  .diff-container :global(.d2h-code-side-linenumber),
+  .diff-container :global(.d2h-code-linenumber) {
+    /* Override sticky positioning that might be causing the scrolling issue */
+    position: relative !important; /* Try relative positioning */
+    /* Alternatively, try position: static !important; */
+     left: auto !important; /* Reset any horizontal positioning */
+     z-index: auto !important; /* Reset z-index */
+  }
+
+  /* Ensure the overall wrapper maintains layout */
+  .diff-container :global(.d2h-wrapper) {
+      position: relative; /* Establish a positioning context if needed */
+  }
+</style>
 
 <div class="max-w-7xl mx-auto">
   <div class="space-y-8">
@@ -112,10 +251,14 @@
                           Comparing Documents...
                       </div>
                   {:else if comparisonResult}
-                      <div class="prose prose-sm max-w-none text-neutral-darkest text-left w-full h-full overflow-auto p-1 prose-headings:font-serif prose-headings:font-semibold prose-headings:text-brand-dark">
+                      <!-- Target div for diff2html output -->
+                      <div 
+                          class="diff-container text-left w-full h-full overflow-auto text-sm border border-neutral-light rounded max-h-[70vh] bg-white"
+                      >
+                           <!-- Render the diff2html generated HTML -->
                           {@html comparisonResult}
                       </div>
-                  {:else if errorMessage && (!uploadedFile1 || !uploadedFile2)}
+                  {:else if errorMessage}
                       <div class="text-red-600 px-4">
                           <svelte:component this={AlertTriangle} class="h-8 w-8 mx-auto mb-1" strokeWidth={1.5} />
                           {errorMessage}
@@ -123,7 +266,7 @@
                   {:else}
                       <div class="text-neutral-medium px-4">
                            <svelte:component this={FileDiff} class="w-12 h-12 mx-auto mb-2 text-neutral-light" strokeWidth={1.5} />
-                          Comparison results will be displayed here.
+                          Comparison results will be displayed here. Select two files and click Compare.
                       </div>
                   {/if}
               </div>
