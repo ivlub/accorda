@@ -6,7 +6,7 @@ import os
 import shutil
 import logging
 from pathlib import Path
-from typing import List, Literal
+from typing import List, Literal, Dict
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 import json
 
@@ -180,91 +180,106 @@ async def handle_text_extraction(file: UploadFile = File(...) ):
         # Close the uploaded file handle
         await file.close()
 
+# --- Internal Helper Functions ---
+
+async def _get_contract_category(document_text: str, filename: str) -> str:
+    """Internal helper to get contract category using AI."""
+    if not jinja_env:
+        logger.error(f"[_get_contract_category] Jinja environment not loaded for {filename}")
+        raise HTTPException(status_code=500, detail="Internal server error: Template engine not available.")
+
+    # Truncate very long text (reuse existing logic)
+    MAX_TEXT_LENGTH = 50000 
+    if len(document_text) > MAX_TEXT_LENGTH:
+        logger.warning(f"[_get_contract_category] Truncating text for {filename} from {len(document_text)} to {MAX_TEXT_LENGTH} characters.")
+        processed_text = document_text[:MAX_TEXT_LENGTH] + "... [TRUNCATED]"
+    else:
+        processed_text = document_text
+
+    # Prepare the prompt
+    try:
+        template = jinja_env.get_template("category_prompt.jinja")
+        prompt = template.render(document_text=processed_text, categories=CONTRACT_CATEGORIES)
+        logger.info(f"[_get_contract_category] Generated category prompt for {filename}")
+    except Exception as template_e:
+        logger.error(f"[_get_contract_category] Failed to render Jinja template for {filename}: {template_e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error: Failed to prepare category prompt.")
+
+    # Call the AI service
+    logger.info(f"[_get_contract_category] Sending request to AI for {filename}")
+    ai_response_raw = await generate_text_from_gemini(prompt)
+    
+    if ai_response_raw.startswith("Error:"):
+        logger.error(f"[_get_contract_category] AI service returned an error for {filename}: {ai_response_raw}")
+        # Propagate specific error details if possible
+        raise HTTPException(status_code=502, detail=f"AI service failed during categorization: {ai_response_raw}")
+    
+    # Process AI response
+    suggested_category = ai_response_raw.strip()
+    logger.info(f"[_get_contract_category] Received category suggestion '{suggested_category}' for {filename}")
+
+    # Validate category
+    if suggested_category not in CONTRACT_CATEGORIES:
+        logger.warning(f"[_get_contract_category] AI suggested category '{suggested_category}' which is not in the predefined list for {filename}. Using 'Other'.")
+        final_category = "Other" # Or potentially raise an error/return None?
+    else:
+        final_category = suggested_category
+
+    logger.info(f"[_get_contract_category] Determined category for {filename}: {final_category}")
+    return final_category
+
+# --- API Endpoints ---
 
 @app.post("/api/analyze/categorize")
 async def categorize_contract(file: UploadFile = File(...)):
     """Receives a contract file, extracts text, asks AI to categorize it, and returns the category."""
-    
-    if not jinja_env:
-         raise HTTPException(status_code=500, detail="Template engine not initialized. Check server logs.")
-
+    # Keep initial file validation and saving logic
     filename = file.filename
     if not filename:
         raise HTTPException(status_code=400, detail="No filename provided.")
-        
-    # Check supported file types (matching text_extractor capabilities)
+    
     file_extension = Path(filename).suffix.lower()
     if file_extension not in [".pdf", ".docx"]:
         raise HTTPException(status_code=415, detail=f"Unsupported file type: '{file_extension}'. Only .pdf and .docx supported for categorization.")
 
-    temp_file_path = UPLOAD_DIR / f"categorize_{filename}" # Use prefix to avoid potential clashes
-    logger.info(f"[Categorize] Receiving file: {filename}. Saving temporarily to {temp_file_path}")
+    temp_file_path = UPLOAD_DIR / f"categorize_{filename}" 
+    logger.info(f"[Categorize Endpoint] Receiving file: {filename}. Saving temporarily to {temp_file_path}")
 
     extracted_content = None
+    category = None
     try:
         # 1. Save file temporarily
         with temp_file_path.open("wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
-            logger.info(f"[Categorize] Successfully saved temporary file: {temp_file_path}")
+            logger.info(f"[Categorize Endpoint] Successfully saved temporary file: {temp_file_path}")
 
         # 2. Extract text
         extracted_content = extract_text(str(temp_file_path))
         if not extracted_content:
-            logger.error(f"[Categorize] Text extraction failed or yielded empty content for: {filename}")
-            raise HTTPException(status_code=500, detail="Failed to extract text from the file. It might be corrupted, empty, or password-protected.")
-        logger.info(f"[Categorize] Successfully extracted text from {filename}. Length: {len(extracted_content)}")
+            logger.error(f"[Categorize Endpoint] Text extraction failed or yielded empty content for: {filename}")
+            raise HTTPException(status_code=500, detail="Failed to extract text from the file.")
+        logger.info(f"[Categorize Endpoint] Successfully extracted text from {filename}. Length: {len(extracted_content)}")
         
-        # Truncate very long text to avoid exceeding AI model limits 
-        MAX_TEXT_LENGTH = 50000 # Example limit, adjust based on model and needs. TODO: evaluete what this sould be 
-        if len(extracted_content) > MAX_TEXT_LENGTH:
-             logger.warning(f"[Categorize] Truncating text for {filename} from {len(extracted_content)} to {MAX_TEXT_LENGTH} characters.")
-             extracted_content = extracted_content[:MAX_TEXT_LENGTH] + "... [TRUNCATED]"
-
-        # 3. Prepare the prompt using Jinja template
-        try:
-            template = jinja_env.get_template("category_prompt.jinja")
-            prompt = template.render(document_text=extracted_content, categories=CONTRACT_CATEGORIES)
-            logger.info(f"[Categorize] Generated prompt for {filename}")
-        except Exception as template_e:
-            logger.error(f"[Categorize] Failed to render Jinja template: {template_e}", exc_info=True)
-            raise HTTPException(status_code=500, detail="Internal server error: Failed to prepare analysis prompt.")
-
-        # 4. Call the AI service
-        logger.info(f"[Categorize] Sending request to AI for {filename}")
-        ai_response_raw = await generate_text_from_gemini(prompt)
+        # 3. Call the internal helper function to get the category
+        category = await _get_contract_category(extracted_content, filename)
         
-        if ai_response_raw.startswith("Error:"):
-            logger.error(f"[Categorize] AI service returned an error for {filename}: {ai_response_raw}")
-            raise HTTPException(status_code=502, detail=f"AI service failed: {ai_response_raw}")
-        
-        # 5. Process AI response (basic validation)
-        suggested_category = ai_response_raw.strip()
-        logger.info(f"[Categorize] Received category suggestion '{suggested_category}' for {filename}")
+        return {"filename": filename, "category": category}
 
-        # Optional: Validate if the category is in our list (AI might hallucinate)
-        if suggested_category not in CONTRACT_CATEGORIES:
-            logger.warning(f"[Categorize] AI suggested category '{suggested_category}' which is not in the predefined list for {filename}. Using 'Other'.")
-            final_category = "Other"
-        else:
-            final_category = suggested_category
-
-        logger.info(f"[Categorize] Final category for {filename}: {final_category}")
-        return {"filename": filename, "category": final_category}
-
+    # Catch potential exceptions from file handling or the helper function
     except HTTPException as http_exc:
-        # Re-raise known HTTP exceptions
+        # Re-raise known HTTP exceptions (including those from _get_contract_category)
         raise http_exc
     except Exception as e:
-        logger.error(f"[Categorize] Error processing file {filename}: {e}", exc_info=True)
+        logger.error(f"[Categorize Endpoint] Error processing file {filename}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred during categorization: {e}")
     finally:
-        # 6. Clean up temporary file
+        # 4. Clean up temporary file
         if temp_file_path and temp_file_path.exists():
             try:
                 temp_file_path.unlink()
-                logger.info(f"[Categorize] Successfully deleted temporary file: {temp_file_path}")
+                logger.info(f"[Categorize Endpoint] Successfully deleted temporary file: {temp_file_path}")
             except Exception as del_e:
-                logger.error(f"[Categorize] Failed to delete temporary file {temp_file_path}: {del_e}")
+                logger.error(f"[Categorize Endpoint] Failed to delete temporary file {temp_file_path}: {del_e}")
         # Close the uploaded file handle
         if file:
             await file.close()
@@ -363,8 +378,14 @@ def load_json_file(file_path: Path):
         logger.error(f"Error loading JSON file {file_path}: {e}", exc_info=True)
         return None
 
-# --- Pydantic Models for Contract Requirements Check ---
+# --- Load Schemas at Startup ---
+REQUIREMENTS_SCHEMA_DATA = load_json_file(PROMPT_DIR / "requirements_schema.json")
+REQUIREMENTS_OUTPUT_EXAMPLE_DATA = load_json_file(PROMPT_DIR / "requirements_output_example.json")
+CATEGORY_REQUIREMENTS_SCHEMAS = load_json_file(PROMPT_DIR / "category_requirements_schemas.json")
 
+# --- Pydantic Models ---
+
+# General Requirements Models
 class RequirementCheckResult(BaseModel):
     met: bool | Literal['maybe']
     explanation: str
@@ -374,7 +395,7 @@ class CompletenessCheck(BaseModel):
     parties_involved: RequirementCheckResult
     object_of_contract: RequirementCheckResult
     obligations_of_parties: RequirementCheckResult
-    date_of_conclusion: RequirementCheckResult | None = None # Optional based on description
+    date_of_conclusion: RequirementCheckResult | None = None
 
 class PrecisionCheck(BaseModel):
     terms_clearly_defined: RequirementCheckResult
@@ -391,135 +412,219 @@ class ContractRequirementsResponse(BaseModel):
     Firmness: FirmnessCheck
     FormalAdequacy: FormalAdequacyCheck
 
+# Category-Specific Requirements Models (Moved Here)
+class CategoryRequirementsResult(BaseModel):
+    met: bool | Literal['maybe']
+    explanation: str
 
-# --- Contract Requirements Check Endpoint ---
+class CategoryRequirementsResponse(BaseModel):
+    category: str
+    analysis: Dict[str, CategoryRequirementsResult] | None = None 
+    message: str | None = None 
 
-# Load schema and example at startup (or handle potential errors)
-REQUIREMENTS_SCHEMA_DATA = load_json_file(PROMPT_DIR / "requirements_schema.json")
-REQUIREMENTS_OUTPUT_EXAMPLE_DATA = load_json_file(PROMPT_DIR / "requirements_output_example.json")
+# --- API Endpoints ---
 
 @app.post("/api/analyze/check-requirements", response_model=ContractRequirementsResponse)
 async def check_contract_requirements(file: UploadFile = File(...)):
     """
-    Receives a contract file, extracts text, asks AI to check requirements 
-    based on a predefined schema, and returns the structured result.
+    Receives a contract file, extracts text, asks AI to check GENERAL requirements 
+    based on the predefined schema, and returns the structured result.
+    (Overrides Formal Adequacy check).
     """
     if not jinja_env:
-         raise HTTPException(status_code=500, detail="Template engine not initialized. Check server logs.")
+         raise HTTPException(status_code=500, detail="Template engine not initialized.")
     if REQUIREMENTS_SCHEMA_DATA is None or REQUIREMENTS_OUTPUT_EXAMPLE_DATA is None:
-         raise HTTPException(status_code=500, detail="Failed to load requirement definition files. Check server logs.")
+         raise HTTPException(status_code=500, detail="Failed to load general requirement definition files.")
 
     filename = file.filename
     if not filename:
         raise HTTPException(status_code=400, detail="No filename provided.")
-        
+    
     file_extension = Path(filename).suffix.lower()
     if file_extension not in [".pdf", ".docx"]:
-        raise HTTPException(status_code=415, detail=f"Unsupported file type: '{file_extension}'. Only .pdf and .docx supported.")
+        raise HTTPException(status_code=415, detail=f"Unsupported file type: '{file_extension}'.")
 
-    temp_file_path = UPLOAD_DIR / f"requirements_{filename}"
-    logger.info(f"[Requirements] Receiving file: {filename}. Saving temporarily to {temp_file_path}")
+    temp_file_path = UPLOAD_DIR / f"general_req_{filename}" # Use specific prefix
+    logger.info(f"[GeneralReq] Receiving file: {filename}. Saving temporarily to {temp_file_path}")
 
     extracted_content = None
     try:
-        # 1. Save file temporarily
+        # 1. Save & Extract Text (Same as before)
         with temp_file_path.open("wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
-            logger.info(f"[Requirements] Successfully saved temporary file: {temp_file_path}")
-
-        # 2. Extract text
         extracted_content = extract_text(str(temp_file_path))
         if not extracted_content:
-            logger.error(f"[Requirements] Text extraction failed or yielded empty content for: {filename}")
-            raise HTTPException(status_code=500, detail="Failed to extract text from the file.")
-        logger.info(f"[Requirements] Successfully extracted text from {filename}. Length: {len(extracted_content)}")
+            raise HTTPException(status_code=500, detail="Failed to extract text.")
+        logger.info(f"[GeneralReq] Extracted text from {filename}. Length: {len(extracted_content)}")
         
-        # Truncate long text if necessary
-        MAX_TEXT_LENGTH = 50000 # Use the same limit as categorization for consistency
+        # Truncate if needed
+        MAX_TEXT_LENGTH = 50000 
         if len(extracted_content) > MAX_TEXT_LENGTH:
-             logger.warning(f"[Requirements] Truncating text for {filename} from {len(extracted_content)} to {MAX_TEXT_LENGTH} characters.")
-             extracted_content = extracted_content[:MAX_TEXT_LENGTH] + "... [TRUNCATED]"
+             processed_text = extracted_content[:MAX_TEXT_LENGTH] + "... [TRUNCATED]"
+        else:
+             processed_text = extracted_content
 
-        # 3. Prepare the prompt using Jinja template
+        # 2. Prepare Prompt (Using general template)
         try:
             schema_str = json.dumps(REQUIREMENTS_SCHEMA_DATA, indent=2)
             output_format_str = json.dumps(REQUIREMENTS_OUTPUT_EXAMPLE_DATA, indent=2)
-            
-            template = jinja_env.get_template("requirements_prompt.jinja")
+            template = jinja_env.get_template("requirements_prompt.jinja") # General prompt template
             prompt = template.render(
-                document_text=extracted_content, 
+                document_text=processed_text, 
                 requirements_schema_str=schema_str,
                 output_format_example_str=output_format_str
             )
-            logger.info(f"[Requirements] Generated prompt for {filename}")
         except Exception as template_e:
-            logger.error(f"[Requirements] Failed to render Jinja template: {template_e}", exc_info=True)
-            raise HTTPException(status_code=500, detail="Internal server error: Failed to prepare analysis prompt.")
+            logger.error(f"[GeneralReq] Failed render template: {template_e}", exc_info=True)
+            raise HTTPException(status_code=500, detail="Failed to prepare general analysis prompt.")
 
-
-        # 4. Call the AI service
-        logger.info(f"[Requirements] Sending request to AI for {filename}")
-        ai_response_raw = await generate_text_from_gemini(prompt) 
-        
+        # 3. Call AI
+        ai_response_raw = await generate_text_from_gemini(prompt)
         if ai_response_raw.startswith("Error:"):
-            logger.error(f"[Requirements] AI service returned an error for {filename}: {ai_response_raw}")
-            raise HTTPException(status_code=502, detail=f"AI service failed: {ai_response_raw}")
+            raise HTTPException(status_code=502, detail=f"AI service failed (general): {ai_response_raw}")
 
-        # 5. Process and validate AI response
-        logger.info(f"[Requirements] Received raw response from AI for {filename}. Length: {len(ai_response_raw)}")
-        
-        # Attempt to clean the response (remove potential markdown/code blocks)
+        # 4. Process and Validate Response (Including 'maybe' fix)
         ai_response_json_str = ai_response_raw.strip()
         if ai_response_json_str.startswith("```json"):
-            ai_response_json_str = ai_response_json_str[7:] # Remove ```json
-        if ai_response_json_str.startswith("```"): # Handle potential ``` start without language
+            ai_response_json_str = ai_response_json_str[7:]
+        if ai_response_json_str.startswith("```"):
              ai_response_json_str = ai_response_json_str[3:]
         if ai_response_json_str.endswith("```"):
-            ai_response_json_str = ai_response_json_str[:-3] # Remove ```
-        ai_response_json_str = ai_response_json_str.strip() # Strip again after potential removals
-        
-        # --- FIX: Replace unquoted 'maybe' --- 
-        # Sometimes the AI might forget quotes around the string "maybe"
+            ai_response_json_str = ai_response_json_str[:-3]
+        ai_response_json_str = ai_response_json_str.strip()
         ai_response_json_str = ai_response_json_str.replace(': maybe', ': "maybe"') 
-        # Consider adding variations if needed, e.g., .replace(':maybe', ': "maybe"')
-        # --------------------------------------
 
         try:
             ai_response_data = json.loads(ai_response_json_str)
-            # Validate the structure using the Pydantic model
             validated_response = ContractRequirementsResponse(**ai_response_data)
-            logger.info(f"[Requirements] Successfully parsed and validated AI response for {filename}")
+            logger.info(f"[GeneralReq] Parsed/validated general AI response for {filename}")
 
-            # --- Override Formal Adequacy --- 
-            logger.info(f"[Requirements] Overriding FormalAdequacy result for {filename}")
+            # 5. Override Formal Adequacy (Moved back here)
+            logger.info(f"[GeneralReq] Overriding FormalAdequacy result for {filename}")
             validated_response.FormalAdequacy.formal_requirements_met.met = "maybe"
             validated_response.FormalAdequacy.formal_requirements_met.explanation = "For formal adequacy, verify the applicable legal requirements in the relevant jurisdiction for the specific type of contract."
-            # --------------------------------
-
+            
             return validated_response
-        except json.JSONDecodeError:
-            logger.error(f"[Requirements] Failed to decode AI response JSON for {filename}. Cleaned Response: {ai_response_json_str}", exc_info=True) # Log the cleaned string
-            raise HTTPException(status_code=502, detail="AI service returned invalid JSON.")
-        except Exception as e: # Catch Pydantic validation errors or other issues
-             logger.error(f"[Requirements] Failed to validate AI response structure for {filename}. Error: {e}. Cleaned Response: {ai_response_json_str}", exc_info=True) # Log the cleaned string
-             raise HTTPException(status_code=502, detail=f"AI service response failed validation: {e}")
+        except Exception as e:
+            logger.error(f"[GeneralReq] Failed parse/validate general AI response: {e}. Cleaned: {ai_response_json_str}", exc_info=True)
+            raise HTTPException(status_code=502, detail=f"General AI response failed validation: {e}")
 
     except HTTPException as http_exc:
-        # Re-raise HTTPExceptions (e.g., from file handling)
         raise http_exc
     except Exception as e:
-        logger.error(f"[Requirements] Error processing file {filename}: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {e}")
+        logger.error(f"[GeneralReq] Error processing file {filename}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Unexpected error during general requirements check: {e}")
     finally:
-        # Ensure the temporary file is deleted
+        # Clean up
         if temp_file_path.exists():
-            try:
-                temp_file_path.unlink()
-                logger.info(f"[Requirements] Successfully deleted temporary file: {temp_file_path}")
-            except Exception as del_e:
-                logger.error(f"[Requirements] Failed to delete temporary file {temp_file_path}: {del_e}")
-        # Close the uploaded file handle
-        await file.close()
+            try: temp_file_path.unlink() 
+            except Exception as del_e: logger.error(f"Failed delete {temp_file_path}: {del_e}")
+        if file: await file.close()
+
+@app.post("/api/analyze/check-category-requirements", response_model=CategoryRequirementsResponse)
+async def check_category_requirements(file: UploadFile = File(...)):
+    """
+    Receives a contract file, determines its category, finds the category-specific 
+    schema, asks AI to check requirements against THAT schema, returns structured result.
+    """
+    if not jinja_env:
+        raise HTTPException(status_code=500, detail="Template engine not initialized.")
+    if CATEGORY_REQUIREMENTS_SCHEMAS is None:
+        raise HTTPException(status_code=500, detail="Failed to load category requirement definition files.")
+
+    filename = file.filename
+    if not filename:
+        raise HTTPException(status_code=400, detail="No filename provided.")
+    
+    file_extension = Path(filename).suffix.lower()
+    if file_extension not in [".pdf", ".docx"]:
+        raise HTTPException(status_code=415, detail=f"Unsupported file type: '{file_extension}'.")
+
+    temp_file_path = UPLOAD_DIR / f"cat_req_{filename}" # Unique prefix
+    logger.info(f"[CatReq] Receiving file: {filename}. Saving temporarily to {temp_file_path}")
+
+    extracted_content = None
+    category = None
+    try:
+        # 1. Save & Extract Text 
+        with temp_file_path.open("wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        extracted_content = extract_text(str(temp_file_path))
+        if not extracted_content:
+            raise HTTPException(status_code=500, detail="Failed to extract text.")
+        logger.info(f"[CatReq] Extracted text from {filename}. Length: {len(extracted_content)}")
+
+        # 2. Determine Contract Category (using internal helper)
+        category = await _get_contract_category(extracted_content, filename)
+
+        # 3. Find Category-Specific Schema
+        category_schema = CATEGORY_REQUIREMENTS_SCHEMAS.get(category)
+        if not category_schema or "criteria" not in category_schema or "output_format_example" not in category_schema:
+            logger.warning(f"[CatReq] No valid schema found for '{category}' for file {filename}")
+            return CategoryRequirementsResponse(category=category, analysis=None, message=f"Specific analysis not available for category: {category}")
+
+        # 4. Prepare the Prompt (using category template)
+        # Truncate text if necessary 
+        MAX_TEXT_LENGTH = 50000 
+        if len(extracted_content) > MAX_TEXT_LENGTH:
+             processed_text = extracted_content[:MAX_TEXT_LENGTH] + "... [TRUNCATED]"
+        else:
+             processed_text = extracted_content
+        
+        try:
+            schema_str = json.dumps(category_schema["criteria"], indent=2)
+            output_format_str = json.dumps(category_schema["output_format_example"], indent=2)
+            template = jinja_env.get_template("category_requirements_prompt.jinja") # Category prompt
+            prompt = template.render(
+                document_text=processed_text, 
+                contract_category=category,
+                requirements_schema_str=schema_str,
+                output_format_example_str=output_format_str
+            )
+        except Exception as template_e:
+            logger.error(f"[CatReq] Failed render category template: {template_e}", exc_info=True)
+            raise HTTPException(status_code=500, detail="Failed to prepare category analysis prompt.")
+
+        # 5. Call the AI service
+        ai_response_raw = await generate_text_from_gemini(prompt)
+        if ai_response_raw.startswith("Error:"):
+            raise HTTPException(status_code=502, detail=f"AI service failed (category): {ai_response_raw}")
+
+        # 6. Process and validate AI response
+        ai_response_json_str = ai_response_raw.strip()
+        if ai_response_json_str.startswith("```json"):
+            ai_response_json_str = ai_response_json_str[7:]
+        if ai_response_json_str.startswith("```"):
+            ai_response_json_str = ai_response_json_str[3:]
+        if ai_response_json_str.endswith("```"):
+            ai_response_json_str = ai_response_json_str[:-3]
+        ai_response_json_str = ai_response_json_str.strip()
+        ai_response_json_str = ai_response_json_str.replace(': maybe', ': "maybe"') 
+
+        try:
+            ai_response_data = json.loads(ai_response_json_str)
+            if not isinstance(ai_response_data, dict):
+                 raise ValueError("AI response is not a dict.")
+            validated_analysis: Dict[str, CategoryRequirementsResult] = {}
+            for key, value in ai_response_data.items():
+                validated_analysis[key] = CategoryRequirementsResult(**value) 
+            logger.info(f"[CatReq] Parsed/validated category AI response for {filename}")
+            return CategoryRequirementsResponse(category=category, analysis=validated_analysis)
+        except Exception as e:
+             logger.error(f"[CatReq] Failed parse/validate category AI response: {e}. Cleaned: {ai_response_json_str}", exc_info=True)
+             raise HTTPException(status_code=502, detail=f"Category AI response failed validation: {e}")
+
+    except HTTPException as http_exc:
+        raise http_exc
+    except Exception as e:
+        logger.error(f"[CatReq] Error processing file {filename}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Unexpected error during category requirements check: {e}")
+    finally:
+        # Clean up
+        if temp_file_path.exists():
+            try: temp_file_path.unlink() 
+            except Exception as del_e: logger.error(f"Failed delete {temp_file_path}: {del_e}")
+        if file: await file.close()
 
 # --- Main execution ---
 if __name__ == "__main__":

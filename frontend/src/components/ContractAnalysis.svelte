@@ -38,29 +38,47 @@
     FormalAdequacy: FormalAdequacyCheck;
   }
 
+  // Category-Specific Requirements (New)
+  interface CategoryRequirementsResult {
+      met: boolean | 'maybe';
+      explanation: string;
+  }
+  // Use Record<string, T> for dictionaries with string keys
+  interface CategoryRequirementsResponse {
+      category: string;
+      analysis: Record<string, CategoryRequirementsResult> | null; 
+      message?: string | null;
+  }
+
+  // --- Component State ---
+  type AnalysisPhase = 'idle' | 'general' | 'category' | 'done' | 'error';
+
   let currentStep: 1 | 2 | 3 = 1;
   let selectedLawType: 'civil' | 'common' = 'common';
   let uploadedFile: File | null = null;
   let uploadedFileName: string | null = null;
-  let isAnalyzing = false;
-  let requirementsResult: ContractRequirementsResponse | null = null;
-  let errorMessage: string | null = null;
+  
+  let analysisPhase: AnalysisPhase = 'idle';
+  let generalRequirementsResult: ContractRequirementsResponse | null = null; // Renamed
+  let contractCategory: string | null = null;
+  let categoryAnalysisResult: Record<string, CategoryRequirementsResult> | null = null;
+  let categoryAnalysisMessage: string | null = null; // For messages like "not supported"
+  let analysisError: string | null = null; // Consolidated error message
+
   // Define backend URL (adjust if necessary)
   const API_BASE_URL = 'http://localhost:8000'; 
 
   function goToStep(step: 1 | 2 | 3) {
       currentStep = step;
-      // Clear errors when moving steps
-      errorMessage = null;
-      // Clear results only when moving back from results (step 3)
+      analysisError = null; // Clear errors when moving steps
       if (step === 1 || step === 2) {
-          requirementsResult = null; 
+          generalRequirementsResult = null; 
+          contractCategory = null;
+          categoryAnalysisResult = null;
+          categoryAnalysisMessage = null;
+          analysisPhase = 'idle';
       }
-      // Optionally reset file when going back to step 1?
-      // if (step === 1) { 
-      //    uploadedFile = null;
-      //    uploadedFileName = null; 
-      // }
+      // if (step === 1) { uploadedFile = null; uploadedFileName = null; }
   }
 
   function handleFileSelect(event: Event) {
@@ -68,8 +86,12 @@
       if (target.files && target.files.length > 0) {
           uploadedFile = target.files[0];
           uploadedFileName = uploadedFile.name;
-          errorMessage = null;
-          requirementsResult = null; // Clear previous results
+          analysisError = null;
+          generalRequirementsResult = null; // Clear previous results fully
+          contractCategory = null;
+          categoryAnalysisResult = null;
+          categoryAnalysisMessage = null;
+          analysisPhase = 'idle';
       } else {
           uploadedFile = null;
           uploadedFileName = null;
@@ -78,50 +100,78 @@
 
   async function startAnalysis() {
     if (!uploadedFile) {
-        errorMessage = "Please select a contract file."; return;
+        analysisError = "Please select a contract file."; 
+        goToStep(2); // Ensure user is on step 2 to see error
+        return;
     }
-    errorMessage = null;
-    isAnalyzing = true;
-    requirementsResult = null; // Clear previous results
-    console.log(`Starting requirements check for ${uploadedFileName}...`);
+    
+    // Reset state for new analysis
+    analysisError = null;
+    generalRequirementsResult = null;
+    contractCategory = null;
+    categoryAnalysisResult = null;
+    categoryAnalysisMessage = null;
+    analysisPhase = 'general';
+    goToStep(3); // Go to results page immediately to show progress
 
+    console.log(`Starting analysis for ${uploadedFileName}...`);
     const formData = new FormData();
     formData.append('file', uploadedFile);
 
+    // --- Call 1: General Requirements ---
     try {
-      const response = await fetch(`${API_BASE_URL}/api/analyze/check-requirements`, {
-          method: 'POST',
-          body: formData,
-      });
+        console.log("[Analysis] Calling /check-requirements...");
+        const responseGeneral = await fetch(`${API_BASE_URL}/api/analyze/check-requirements`, {
+            method: 'POST',
+            body: formData, // Send the form data
+        });
 
-      if (!response.ok) {
-          let errorDetail = "An unknown error occurred during analysis.";
-          try {
-              // Try to parse the error message from the backend
-              const errorJson = await response.json();
-              errorDetail = errorJson.detail || `Server responded with status ${response.status}`;
-          } catch (parseError) {
-              errorDetail = `Server responded with status ${response.status}. Could not parse error details.`;
-          }
-          throw new Error(errorDetail);
-      }
+        if (!responseGeneral.ok) {
+            let errorDetail = "Failed during general requirements check.";
+            try { errorDetail = (await responseGeneral.json()).detail || errorDetail; } catch (e) {/* ignore */} 
+            throw new Error(errorDetail);
+        }
 
-      const result: ContractRequirementsResponse = await response.json();
-      console.log("Requirements Analysis Result:", result);
-      requirementsResult = result;
-      goToStep(3); // <-- Go to step 3 on success
+        generalRequirementsResult = await responseGeneral.json();
+        console.log("[Analysis] General Requirements Result:", generalRequirementsResult);
+        analysisPhase = 'category'; // Move to next phase
 
     } catch (error) {
-        console.error("Analysis API call failed:", error);
-        // Check if error is an instance of Error to access message property
-        if (error instanceof Error) {
-            errorMessage = error.message;
-        } else {
-            errorMessage = "An unexpected error occurred connecting to the analysis service.";
+        console.error("[Analysis] General requirements call failed:", error);
+        analysisError = error instanceof Error ? error.message : "An unknown error occurred during general analysis.";
+        analysisPhase = 'error';
+        return; // Stop analysis here if general check fails
+    }
+
+    // --- Call 2: Category-Specific Requirements ---
+    // Re-create FormData as it might be consumed by the first fetch in some environments
+    const formDataCat = new FormData(); 
+    formDataCat.append('file', uploadedFile);
+    try {
+        console.log("[Analysis] Calling /check-category-requirements...");
+        const responseCategory = await fetch(`${API_BASE_URL}/api/analyze/check-category-requirements`, {
+            method: 'POST',
+            body: formDataCat, // Send form data again
+        });
+
+        if (!responseCategory.ok) {
+            let errorDetail = "Failed during category-specific requirements check.";
+            try { errorDetail = (await responseCategory.json()).detail || errorDetail; } catch (e) {/* ignore */} 
+            throw new Error(errorDetail);
         }
-        // Stay on step 2 if there is an error
-    } finally {
-        isAnalyzing = false;
+
+        const resultCategory: CategoryRequirementsResponse = await responseCategory.json();
+        console.log("[Analysis] Category Requirements Result:", resultCategory);
+        contractCategory = resultCategory.category;
+        categoryAnalysisResult = resultCategory.analysis; // Might be null
+        categoryAnalysisMessage = resultCategory.message ?? null; // Handle potential undefined message
+        analysisPhase = 'done'; // All finished successfully
+
+    } catch (error) {
+        console.error("[Analysis] Category requirements call failed:", error);
+        // Set error, but keep general results visible
+        analysisError = error instanceof Error ? error.message : "An unknown error occurred during category-specific analysis.";
+        analysisPhase = 'error'; 
     }
   }
 
@@ -133,6 +183,27 @@
   // Helper to format category name (e.g., FormalAdequacy -> Formal Adequacy)
   function formatCategoryName(name: string): string {
       return name.replace(/([A-Z])/g, ' $1').trim(); // Add space before capital letters
+  }
+
+  // New helper function to calculate status counts safely
+  function calculateStatusCounts(criteria: object): { falseCount: number; maybeCount: number } {
+      let falseCount = 0;
+      let maybeCount = 0;
+
+      if (!criteria) return { falseCount: 0, maybeCount: 0 };
+
+      for (const result of Object.values(criteria)) {
+          // Type guard to ensure we're dealing with a potential result object
+          if (result && typeof result === 'object' && 'met' in result) {
+              const checkResult = result as RequirementCheckResult; // Safe assertion after checks
+              if (checkResult.met === false) {
+                  falseCount++;
+              } else if (checkResult.met === 'maybe') {
+                  maybeCount++;
+              }
+          }
+      }
+      return { falseCount, maybeCount };
   }
 
 </script>
@@ -202,12 +273,12 @@
                         <p class="text-xs text-neutral-medium mt-0.5">PDF, DOCX up to 50MB</p>
                         <input id="contract-upload" type="file" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" on:change={handleFileSelect} accept=".pdf,.docx"/>
                     </label>
-                    <!-- Error message shown here if analysis fails -->
-                    {#if errorMessage}
+                    <!-- Error message shown here if analysis fails on step 2 -->
+                    {#if analysisPhase === 'error' && analysisError}
                          <div class="mt-4 p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-700 flex items-start space-x-2">
                              <svelte:component this={AlertTriangle} class="w-5 h-5 flex-shrink-0 mt-0.5" />
                              <div>
-                                 <span class="font-medium">Analysis Failed:</span> {errorMessage}
+                                 <span class="font-medium">Analysis Failed:</span> {analysisError}
                              </div>
                         </div>
                     {/if}
@@ -217,11 +288,11 @@
             <!-- Action Button -->
             <div class="mb-8 flex justify-end">
                 <button
-                    on:click={startAnalysis}
-                    disabled={!uploadedFile || isAnalyzing}
+                    on:click={startAnalysis} 
+                    disabled={!uploadedFile || analysisPhase === 'general' || analysisPhase === 'category'} 
                     class="px-5 py-2.5 bg-brand-dark text-white rounded-md font-semibold text-sm hover:bg-neutral-darkest focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-dark disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-neutral-medium transition duration-150 ease-in-out flex items-center justify-center space-x-2 shadow-sm"
                 >
-                    {#if isAnalyzing}
+                    {#if analysisPhase === 'general' || analysisPhase === 'category'}
                         <svelte:component this={Loader2} class="animate-spin h-4 w-4 text-white" />
                         <span>Analyzing...</span>
                     {:else}
@@ -240,6 +311,7 @@
                  <button 
                     on:click={() => goToStep(2)} 
                     class="px-3 py-1.5 text-sm text-neutral-dark hover:text-neutral-darkest hover:bg-neutral-lightest rounded-md transition duration-150 ease-in-out flex items-center space-x-1"
+                    disabled={analysisPhase === 'general' || analysisPhase === 'category'} 
                  >
                     <svelte:component this={ArrowLeft} class="w-4 h-4" />
                     <span>Back to Upload</span>
@@ -250,92 +322,109 @@
                 <p class="text-sm text-neutral-medium mb-4">File: <span class="font-medium text-neutral-dark">{uploadedFileName}</span></p>
              {/if}
 
-            <!-- Results Section -->
-            <section aria-labelledby="results-heading">
-                <h2 id="results-heading" class="sr-only">Contract Requirements Analysis</h2>
-                
-                <!-- Added Heading -->
-                <h3 class="text-lg font-semibold text-neutral-dark mb-3 font-serif">General contract requirements</h3>
-
-                <div class="bg-neutral-white p-1 md:p-2 rounded-md border border-neutral-light min-h-[200px] shadow-sm">
-                    {#if isAnalyzing} <!-- Should generally not be seen here, but as fallback -->
-                        <div class="text-neutral-dark flex items-center justify-center h-full text-center p-10">
-                            <div><svelte:component this={Loader2} class="animate-spin h-6 w-6 text-brand-muted mx-auto mb-2" /> Loading...</div>
-                        </div>
-                    {:else if requirementsResult}
-                        <!-- Collapsible Results -->
+            <!-- General Requirements Section -->
+            {#if generalRequirementsResult}
+                <section aria-labelledby="general-results-heading" class="mb-6">
+                    <h3 id="general-results-heading" class="text-lg font-semibold text-neutral-dark mb-3 font-serif">General Contract Requirements</h3>
+                    <div class="bg-neutral-white p-1 md:p-2 rounded-md border border-neutral-light shadow-sm">
                         <div class="space-y-3 p-2 md:p-4">
-                            {#each Object.entries(requirementsResult) as [category, criteria]}
-                                {@const criteriaResults = Object.values(criteria).filter(r => r && typeof r === 'object' && 'met' in r)}
-                                {@const falseCount = criteriaResults.filter(r => r.met === false).length}
-                                {@const maybeCount = criteriaResults.filter(r => r.met === 'maybe').length}
-                                {@const isAllGood = falseCount === 0 && maybeCount === 0}
-                                <details class="border border-neutral-light rounded-md group" open>
-                                    <summary class="list-none flex items-center justify-between bg-neutral-lightest px-4 py-3 cursor-pointer hover:bg-neutral-lighter transition duration-150 ease-in-out rounded-t-md">
-                                        <div class="flex items-center space-x-2 flex-wrap gap-y-1">
-                                            <span class="font-semibold font-serif text-base text-neutral-darkest">{formatCategoryName(category)}</span>
-                                             <!-- Status Badges -->
-                                             {#if isAllGood}
-                                                 <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                                      <svelte:component this={CheckCircle2} class="w-3 h-3 mr-1"/> All Good
-                                                 </span>
-                                             {:else}
-                                                {#if falseCount > 0}
-                                                    <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                                        <svelte:component this={XCircle} class="w-3 h-3 mr-1"/> {falseCount}
-                                                    </span>
-                                                {/if}
-                                                {#if maybeCount > 0}
-                                                    <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                                        <svelte:component this={HelpCircle} class="w-3 h-3 mr-1"/> {maybeCount}
-                                                    </span>
-                                                {/if}
-                                            {/if}
-                                        </div>
-                                        <svelte:component this={ChevronDown} class="w-5 h-5 text-neutral-dark group-open:rotate-180 transition-transform flex-shrink-0 ml-2"/>
-                                    </summary>
-                                    <ul class="divide-y divide-neutral-light bg-white rounded-b-md">
-                                        {#each Object.entries(criteria) as [key, result]}
-                                            {#if result && typeof result === 'object' && 'met' in result && 'explanation' in result}
-                                                <li class="flex items-start p-4 space-x-3 text-sm">
-                                                    {#if result.met === true}
-                                                        <svelte:component this={CheckCircle2} class="w-5 h-5 mt-0.5 flex-shrink-0 text-green-600" strokeWidth={2}/>
-                                                    {:else if result.met === false}
-                                                        <svelte:component this={XCircle} class="w-5 h-5 mt-0.5 flex-shrink-0 text-red-600" strokeWidth={2}/>
-                                                    {:else}
-                                                        <svelte:component this={HelpCircle} class="w-5 h-5 mt-0.5 flex-shrink-0 text-yellow-600" strokeWidth={2}/>
-                                                    {/if}
-                                                    <div class="flex-grow">
-                                                        <!-- Hide subtitle for FormalAdequacy -->
-                                                        {#if category !== 'FormalAdequacy'}
-                                                            <p class="font-medium text-neutral-darkest">{formatCriterionKey(key)}</p>
-                                                        {/if}
-                                                        <p class="text-neutral-dark mt-1 {category === 'FormalAdequacy' ? '' : 'mt-1'}">{result.explanation}</p>
-                                                    </div>
-                                                </li>
-                                            {/if}
-                                        {/each}
-                                    </ul>
-                                </details>
-                            {/each}
-                        </div>
-                     {:else if errorMessage} <!-- Error specific to step 3 - should not normally happen -->
-                         <div class="text-red-600 px-4 flex items-center justify-center h-full text-center p-10">
-                             <div>
-                                 <svelte:component this={AlertTriangle} class="h-8 w-8 mx-auto mb-1" strokeWidth={1.5} />
-                                 <p><strong>Error Displaying Results:</strong> {errorMessage}</p>
-                             </div>
-                        </div>
-                    {:else} <!-- No results yet -->
-                        <div class="text-neutral-medium px-4 flex items-center justify-center h-full text-center p-10">
-                            <div>
-                                <svelte:component this={FileIcon} class="w-12 h-12 mx-auto mb-2 text-neutral-light" strokeWidth={1.5} />
-                                Results will appear here after successful analysis.
-                            </div>
-                        </div>
-                    {/if}
+                             {#each Object.entries(generalRequirementsResult) as [category, criteria]}
+                                 <!-- Use helper function for counts -->
+                                 {@const counts = calculateStatusCounts(criteria)}
+                                 {@const isAllGood = counts.falseCount === 0 && counts.maybeCount === 0}
+                                 <details class="border border-neutral-light rounded-md group" open>
+                                     <summary class="list-none flex items-center justify-between bg-neutral-lightest px-4 py-3 cursor-pointer hover:bg-neutral-lighter transition duration-150 ease-in-out rounded-t-md">
+                                         <div class="flex items-center space-x-2 flex-wrap gap-y-1">
+                                             <span class="font-semibold font-serif text-base text-neutral-darkest">{formatCategoryName(category)}</span>
+                                             <!-- Use counts from helper -->
+                                             {#if isAllGood} <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800"><svelte:component this={CheckCircle2} class="w-3 h-3 mr-1"/> All Good</span> {:else} {#if counts.falseCount > 0} <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800"><svelte:component this={XCircle} class="w-3 h-3 mr-1"/> {counts.falseCount}</span> {/if} {#if counts.maybeCount > 0} <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800"><svelte:component this={HelpCircle} class="w-3 h-3 mr-1"/> {counts.maybeCount}</span> {/if} {/if}
+                                         </div>
+                                         <svelte:component this={ChevronDown} class="w-5 h-5 text-neutral-dark group-open:rotate-180 transition-transform flex-shrink-0 ml-2"/>
+                                     </summary>
+                                     <ul class="divide-y divide-neutral-light bg-white rounded-b-md">
+                                         {#each Object.entries(criteria) as [key, result]}
+                                             {#if result && typeof result === 'object' && 'met' in result && 'explanation' in result}
+                                                 <li class="flex items-start p-4 space-x-3 text-sm">
+                                                     {#if result.met === true} <svelte:component this={CheckCircle2} class="w-5 h-5 mt-0.5 flex-shrink-0 text-green-600" strokeWidth={2}/> {:else if result.met === false} <svelte:component this={XCircle} class="w-5 h-5 mt-0.5 flex-shrink-0 text-red-600" strokeWidth={2}/> {:else} <svelte:component this={HelpCircle} class="w-5 h-5 mt-0.5 flex-shrink-0 text-yellow-600" strokeWidth={2}/> {/if}
+                                                     <div class="flex-grow">
+                                                         {#if category !== 'FormalAdequacy'} <p class="font-medium text-neutral-darkest">{formatCriterionKey(key)}</p> {/if}
+                                                         <p class="text-neutral-dark {category === 'FormalAdequacy' ? '' : 'mt-1'}">{result.explanation}</p>
+                                                     </div>
+                                                 </li>
+                                             {/if}
+                                         {/each}
+                                     </ul>
+                                 </details>
+                             {/each}
+                         </div>
+                     </div>
+                </section>
+             {:else if analysisPhase === 'general'} 
+                <!-- Show initial loading for general results -->
+                 <div class="text-neutral-dark flex items-center justify-center h-full text-center p-10 border border-dashed border-neutral-light rounded-md min-h-[100px]">
+                    <div><svelte:component this={Loader2} class="animate-spin h-6 w-6 text-brand-muted mx-auto mb-2" /> Analyzing general requirements...</div>
                 </div>
+            {/if}
+
+            <!-- Category Specific Requirements Section -->
+            <section aria-labelledby="category-results-heading" class="mt-8">
+                {#if analysisPhase === 'category'} 
+                     <!-- Loading state for category analysis -->
+                     <div class="text-neutral-dark flex items-center justify-center text-center p-6 border border-dashed border-neutral-light rounded-md min-h-[100px]">
+                         <div><svelte:component this={Loader2} class="animate-spin h-6 w-6 text-brand-muted mx-auto mb-2" /> Analyzing category-specific requirements...</div>
+                     </div>
+                {:else if analysisPhase === 'done' && contractCategory}
+                    <!-- Display category results once done -->
+                    <h3 id="category-results-heading" class="text-lg font-semibold text-neutral-dark mb-3 font-serif">Specific Requirements for: {contractCategory}</h3>
+                    <div class="bg-neutral-white p-1 md:p-2 rounded-md border border-neutral-light shadow-sm">
+                        {#if categoryAnalysisResult}
+                            <div class="space-y-3 p-2 md:p-4">
+                                {#each Object.entries(categoryAnalysisResult) as [key, result]} 
+                                    <!-- Display individual category criteria using details/summary -->
+                                     <details class="border border-neutral-light rounded-md group" open>
+                                         <summary class="list-none flex items-center justify-between bg-neutral-lightest px-4 py-3 cursor-pointer hover:bg-neutral-lighter transition duration-150 ease-in-out rounded-t-md">
+                                             <div class="flex items-center space-x-2 flex-wrap gap-y-1">
+                                                  <span class="font-semibold font-serif text-base text-neutral-darkest">{formatCriterionKey(key)}</span>
+                                                  <!-- Badges for individual criteria -->
+                                                  {#if result.met === true}
+                                                      <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800"><svelte:component this={CheckCircle2} class="w-3 h-3 mr-1"/> Met</span>
+                                                  {:else if result.met === false}
+                                                      <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800"><svelte:component this={XCircle} class="w-3 h-3 mr-1"/> Not Met</span>
+                                                  {:else}
+                                                      <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800"><svelte:component this={HelpCircle} class="w-3 h-3 mr-1"/> Maybe</span>
+                                                  {/if}
+                                             </div>
+                                             <svelte:component this={ChevronDown} class="w-5 h-5 text-neutral-dark group-open:rotate-180 transition-transform flex-shrink-0 ml-2"/>
+                                         </summary>
+                                         <div class="bg-white rounded-b-md p-4 text-sm">
+                                             <p class="text-neutral-dark">{result.explanation}</p>
+                                         </div>
+                                     </details>
+                                {/each}
+                            </div>
+                        {:else if categoryAnalysisMessage} 
+                             <!-- Message if analysis not available for category -->
+                             <div class="text-neutral-medium px-4 py-6 text-center">
+                                 <p>{categoryAnalysisMessage}</p>
+                             </div>
+                        {/if}
+                    </div>
+                {:else if analysisPhase === 'error' && analysisError && generalRequirementsResult} 
+                     <!-- Show error from second call if first call succeeded -->
+                     <div class="mt-4 p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-700 flex items-start space-x-2">
+                         <svelte:component this={AlertTriangle} class="w-5 h-5 flex-shrink-0 mt-0.5" />
+                         <div>
+                             <span class="font-medium">Category Analysis Failed:</span> {analysisError}
+                         </div>
+                    </div>
+                 {:else}
+                     <!-- Initial placeholder or if general results failed -->
+                     <div class="text-neutral-medium px-4 py-6 text-center border border-dashed border-neutral-light rounded-md min-h-[100px]">
+                         <p>Category-specific analysis will appear here.</p>
+                     </div>
+                {/if}
             </section>
+            
         </div>
     {/if}
 </div> 

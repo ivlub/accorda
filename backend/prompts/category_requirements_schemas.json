@@ -1,0 +1,38 @@
+{
+  "Non-Disclosure Agreement": {
+    "criteria": [
+      {"id": "date_of_formation", "description": "Is the effective date or date of agreement formation clearly stated?"},
+      {"id": "jurisdiction", "description": "Is the governing law or jurisdiction specified?"},
+      {"id": "parties_identification", "description": "Are all parties (Disclosing and Receiving) fully identified with names and addresses? Are representatives named?"},
+      {"id": "recitals", "description": "Are there recitals explaining the background or purpose of the agreement?"},
+      {"id": "definition_confidential_info", "description": "Is 'Confidential Information' clearly defined, including examples or exclusions?"},
+      {"id": "object_of_contract", "description": "Is the purpose or object of the NDA (e.g., specific business opportunity, discussion topic) clearly stated?"},
+      {"id": "obligations", "description": "Are the core obligations of the Receiving Party (non-disclosure, non-use, return/destruction) clearly defined? Are the Disclosing Party's obligations (if any) clear?"},
+      {"id": "rights_ownership", "description": "Does the agreement state who owns the confidential information and that no license or title is granted?"},
+      {"id": "liability_breach", "description": "Does the agreement address liability or consequences in case of a breach?"},
+      {"id": "term_duration", "description": "Is the duration of the confidentiality obligation specified (term or condition for termination)?"},
+      {"id": "termination_clause", "description": "Are the conditions or process for terminating the agreement itself outlined?"},
+      {"id": "remedies", "description": "Does the agreement mention available remedies (e.g., injunctive relief)?"},
+      {"id": "penalties", "description": "Are specific penalties for breach mentioned (less common, but check)?"},
+      {"id": "relationship_of_parties", "description": "Does the agreement clarify the relationship (e.g., no partnership or joint venture created)?"},
+      {"id": "conflict_deviation", "description": "Does the agreement address potential conflicts or deviations (e.g., permitted disclosures, prior knowledge)?"}
+    ],
+    "output_format_example": {
+       "date_of_formation": {"met": true, "explanation": "Effective date is clearly stated on page 1."},
+       "jurisdiction": {"met": true, "explanation": "Governed by the laws of the State of Washington (Section 12)."},
+       "parties_identification": {"met": false, "explanation": "Receiving Party name and address are blank."},
+       "recitals": {"met": true, "explanation": "Recitals clearly outline the purpose related to a business opportunity."},
+       "definition_confidential_info": {"met": true, "explanation": "Section 2 provides a comprehensive definition."},
+       "object_of_contract": {"met": true, "explanation": "Stated as discussions concerning a potential business opportunity."},
+       "obligations": {"met": true, "explanation": "Receiving Party obligations detailed in Section 3."},
+       "rights_ownership": {"met": true, "explanation": "Section 5 confirms Disclosing Party ownership."},
+       "liability_breach": {"met": "maybe", "explanation": "Liability isn't explicitly quantified, but breach implications are mentioned."},
+       "term_duration": {"met": true, "explanation": "Confidentiality term is 5 years from disclosure (Section 8)."},
+       "termination_clause": {"met": true, "explanation": "Termination conditions outlined in Section 9."},
+       "remedies": {"met": true, "explanation": "Injunctive relief is mentioned as a remedy (Section 10)."},
+       "penalties": {"met": false, "explanation": "No specific penalties are defined."},
+       "relationship_of_parties": {"met": true, "explanation": "Section 11 clarifies no other relationship is formed."},
+       "conflict_deviation": {"met": true, "explanation": "Permitted disclosures are listed in Section 4."}
+    }
+  }
+} 
