@@ -127,27 +127,25 @@
       display: none !important;
   }
 
-  /* Set background of added/deleted TABLE CELLS to transparent */
-  .diff-container :global(td.d2h-ins),
+  /* Set background of added/deleted TABLE CELLS */
+  .diff-container :global(td.d2h-ins) {
+      background-color: #e6ffed !important; /* Light green background for the cell */
+  }
   .diff-container :global(td.d2h-del) {
-      background-color: transparent !important; /* Override default cell background */
+      background-color: #ffebe9 !important; /* Light red background for the cell */
   }
 
-  /* Override default background and add border for deleted text segments */
-  .diff-container :global(del) {
-      background-color: transparent !important; /* Override default red fill */
-      /* border: 2px solid red !important; */
-      background-color: rgb(244, 121, 121) !important;
+  /* Style the specific deleted text segments within the line */
+  .diff-container :global(td.d2h-del del) { /* Target del inside td.d2h-del */
+      background-color: #ffc9c4 !important; /* Slightly darker red */
       border-radius: 3px;
       padding: 0 2px;
       text-decoration: none !important; /* Remove default strikethrough if present */
   }
 
-  /* Override default background and add border for added text segments */
-  .diff-container :global(ins) {
-      background-color: transparent !important; /* Override default green fill */
-      /* border: 2px solid green !important; */
-      background-color: rgb(152, 225, 152) !important;
+  /* Style the specific added text segments within the line */
+  .diff-container :global(td.d2h-ins ins) { /* Target ins inside td.d2h-ins */
+      background-color: #c3e9c3 !important; /* Slightly darker green */
       border-radius: 3px;
       padding: 0 2px;
       text-decoration: none !important; /* Remove default underline if present */
@@ -163,9 +161,10 @@
     display: none !important;
   }
 
-  .d2h-code-side-line {
+  /* This rule is likely redundant as the parent column is hidden */
+  /* .d2h-code-side-line {
     display: none !important;
-  }
+  } */
 </style>
 
 <div class="max-w-7xl mx-auto">
