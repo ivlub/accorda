@@ -13,12 +13,15 @@
   let isComparing = false;
   let comparisonResult: string | null = null;
   let errorMessage: string | null = null;
+  let isExplaining = false;
+  let diffExplanation: string | null = null;
+  let explanationErrorMessage: string | null = null;
 
   function handleFileSelect(event: Event, fileNumber: 1 | 2) {
       const target = event.target as HTMLInputElement;
       if (target.files && target.files.length > 0) {
           const file = target.files[0];
-          errorMessage = null; comparisonResult = null;
+          errorMessage = null; comparisonResult = null; diffExplanation = null; explanationErrorMessage = null;
           if (fileNumber === 1) {
               if (uploadedFile2 && file === uploadedFile2) { errorMessage = "Cannot select the same file instance."; target.value = ''; return; }
               uploadedFile1 = file; uploadedFile1Name = file.name;
@@ -32,14 +35,60 @@
       }
   }
 
+  async function getDiffExplanation(file1: File, file2: File) {
+      if (!file1 || !file2) return;
+
+      isExplaining = true;
+      diffExplanation = null;
+      explanationErrorMessage = null;
+      console.log("Fetching diff explanation...");
+
+      const formData = new FormData();
+      formData.append('file1', file1);
+      formData.append('file2', file2);
+
+      try {
+          const response = await fetch('/api/explain-diff', {
+              method: 'POST',
+              body: formData,
+          });
+          console.log('Explain API Response Status:', response.status);
+
+          if (!response.ok) {
+              const errorText = await response.text();
+              console.error('Explain API Error Response Text:', errorText);
+              throw new Error(response.statusText + (errorText ? `: ${errorText}` : ''));
+          }
+
+          const data = await response.json();
+          console.log('Received explanation data from API:', data);
+          
+          if (data.explanation) {
+              diffExplanation = data.explanation;
+              console.log("Diff explanation fetched successfully.");
+          } else {
+              throw new Error("Explanation missing in API response.");
+          }
+
+      } catch (error: any) {
+          console.error("Fetching explanation failed:", error);
+          explanationErrorMessage = `Failed to get explanation: ${error.message || 'Network error'}`;
+          diffExplanation = null;
+      } finally {
+          isExplaining = false;
+      }
+  }
+
   async function startComparison() {
       if (!uploadedFile1 || !uploadedFile2) { errorMessage = "Please select two contract files."; return; }
-      errorMessage = null; isComparing = true; comparisonResult = null;
+      errorMessage = null; isComparing = true; comparisonResult = null; diffExplanation = null; explanationErrorMessage = null; isExplaining = false;
       console.log(`Starting comparison between ${uploadedFile1Name} and ${uploadedFile2Name}...`);
 
       const formData = new FormData();
       formData.append('file1', uploadedFile1);
       formData.append('file2', uploadedFile2);
+
+      let comparisonSuccess = false;
 
       try {
           const response = await fetch('/api/compare', {
@@ -97,14 +146,20 @@
           // Only log success if HTML generation didn't throw
           if (comparisonResult) {
               console.log("Comparison successful, diff generated.");
+              comparisonSuccess = true;
           }
 
       } catch (error: any) {
           console.error("Comparison failed:", error);
           errorMessage = `Comparison failed: ${error.message || 'Network error'}`;
           comparisonResult = null;
+          comparisonSuccess = false;
       } finally {
           isComparing = false;
+      }
+
+      if (comparisonSuccess && uploadedFile1 && uploadedFile2) {
+          await getDiffExplanation(uploadedFile1, uploadedFile2);
       }
   }
 
@@ -258,6 +313,34 @@
           {/key}
         </div>
       </div>
+
+      <!-- Explanation Section -->
+      {#if comparisonResult || isExplaining || explanationErrorMessage}
+        <div class="mt-8 bg-neutral-white p-6 rounded-md border border-neutral-light">
+          <h3 class="text-base font-semibold text-brand-dark mb-3">AI Explanation of Changes</h3>
+           {#key diffExplanation || isExplaining || explanationErrorMessage}
+              <div class="text-sm text-neutral-darkest space-y-2" in:fade={{ duration: 300 }} out:fade={{ duration: 150 }}>
+                  {#if isExplaining}
+                      <div class="flex items-center text-neutral-dark">
+                          <svelte:component this={Loader2} class="animate-spin h-4 w-4 mr-2 text-brand-muted" />
+                          Generating explanation...
+                      </div>
+                  {:else if diffExplanation}
+                       <!-- Render the explanation, potentially preserving whitespace/newlines -->
+                      <div class="whitespace-pre-wrap">{@html diffExplanation}</div>
+                  {:else if explanationErrorMessage}
+                      <div class="text-red-600 flex items-start">
+                          <svelte:component this={AlertTriangle} class="h-5 w-5 mr-1.5 mt-0.5 flex-shrink-0" strokeWidth={1.5} />
+                          {explanationErrorMessage}
+                      </div>
+                  {:else if comparisonResult && !isExplaining && !diffExplanation && !explanationErrorMessage}
+                       <!-- Initial state after comparison, before explanation starts/finishes -->
+                       <p class="text-neutral-medium italic">Explanation will appear here.</p>
+                  {/if}
+              </div>
+           {/key}
+        </div>
+      {/if}
     </section>
 
   </div>

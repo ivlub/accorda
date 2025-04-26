@@ -10,6 +10,7 @@ from typing import List, Literal, Dict
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 import json
 import uuid
+import difflib
 
 # Import services
 from ai_service import generate_text_from_gemini
@@ -29,16 +30,28 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 TEMPLATE_DIR = Path("/app/templates") # Assuming templates are at /app/templates in container
 PROMPT_DIR = Path("/app/prompts") # Define prompt directory
 
-# Setup Jinja2 environment
+# Combine template and prompt directories for Jinja
+LOADER_DIRS = []
 if TEMPLATE_DIR.is_dir():
+    LOADER_DIRS.append(str(TEMPLATE_DIR))
+else:
+    logger.warning(f"Template directory not found: {TEMPLATE_DIR}")
+
+if PROMPT_DIR.is_dir():
+    LOADER_DIRS.append(str(PROMPT_DIR))
+else:
+    logger.warning(f"Prompt directory not found: {PROMPT_DIR}")
+
+# Setup Jinja2 environment if at least one directory exists
+if LOADER_DIRS:
     jinja_env = Environment(
-        loader=FileSystemLoader(str(TEMPLATE_DIR)),
+        loader=FileSystemLoader(LOADER_DIRS), # Load from multiple directories
         autoescape=select_autoescape(['html', 'xml', 'jinja'])
     )
-    logger.info(f"Jinja2 environment loaded from {TEMPLATE_DIR}")
+    logger.info(f"Jinja2 environment loaded from {LOADER_DIRS}")
 else:
     jinja_env = None
-    logger.error(f"Jinja2 template directory not found: {TEMPLATE_DIR}. Categorization endpoint may fail.")
+    logger.error("Neither template nor prompt directories found. Jinja environment not loaded.")
 
 # Define contract categories
 # TODO: Consider moving this to a config file or database
@@ -475,6 +488,11 @@ CATEGORY_REQUIREMENTS_SCHEMAS = load_json_file(PROMPT_DIR / "category_requiremen
 
 # --- Pydantic Models ---
 
+class DiffExplanationResponse(BaseModel):
+    filename1: str
+    filename2: str
+    explanation: str
+
 # General Requirements Models
 class RequirementCheckResult(BaseModel):
     met: bool | Literal['maybe']
@@ -754,6 +772,127 @@ async def check_category_requirements(file: UploadFile = File(...)):
             try: temp_file_path.unlink() 
             except Exception as del_e: logger.error(f"Failed delete {temp_file_path}: {del_e}")
         if file: await file.close()
+
+# --- Diff Explanation Endpoint ---
+
+@app.post("/api/explain-diff", response_model=DiffExplanationResponse)
+async def explain_contract_diff(file1: UploadFile = File(...), file2: UploadFile = File(...)):
+    """
+    Receives two contract files, generates a diff, asks AI to explain the diff,
+    and returns the explanation.
+    """
+    if not jinja_env:
+        raise HTTPException(status_code=500, detail="Template engine not initialized.")
+    # 1. Validate filenames and types
+    for file in [file1, file2]:
+        if not file.filename:
+            raise HTTPException(status_code=400, detail="One or both files are missing filenames.")
+        file_extension = Path(file.filename).suffix.lower()
+        if file_extension not in [".pdf", ".docx"]:
+             raise HTTPException(status_code=415, detail=f"Unsupported file type: '{file_extension}' in {file.filename}.")
+
+    # 2. Setup temporary file paths with unique IDs
+    unique_id_1 = uuid.uuid4()
+    unique_id_2 = uuid.uuid4()
+    temp_file_path_1 = UPLOAD_DIR / f"explain_{unique_id_1}_{file1.filename}"
+    temp_file_path_2 = UPLOAD_DIR / f"explain_{unique_id_2}_{file2.filename}"
+    logger.info(f"[ExplainDiff] Receiving files: {file1.filename}, {file2.filename}")
+
+    extracted_text_1 = None
+    extracted_text_2 = None
+
+    try:
+        # 3. Save files temporarily
+        logger.info(f"[ExplainDiff] Saving temp file 1: {temp_file_path_1}")
+        with temp_file_path_1.open("wb") as buffer:
+            shutil.copyfileobj(file1.file, buffer)
+        logger.info(f"[ExplainDiff] Saving temp file 2: {temp_file_path_2}")
+        with temp_file_path_2.open("wb") as buffer:
+            shutil.copyfileobj(file2.file, buffer)
+
+        # 4. Extract text from both files
+        logger.info(f"[ExplainDiff] Extracting text from {file1.filename}")
+        extracted_text_1 = extract_text(str(temp_file_path_1))
+        if extracted_text_1 is None:
+            logger.error(f"[ExplainDiff] Text extraction failed for {file1.filename}. Treating as empty.")
+            extracted_text_1 = "" # Default to empty string
+
+        logger.info(f"[ExplainDiff] Extracting text from {file2.filename}")
+        extracted_text_2 = extract_text(str(temp_file_path_2))
+        if extracted_text_2 is None:
+            logger.error(f"[ExplainDiff] Text extraction failed for {file2.filename}. Treating as empty.")
+            extracted_text_2 = "" # Default to empty string
+
+        # 5. Generate Unified Diff
+        logger.info(f"[ExplainDiff] Generating diff between extracted texts.")
+        # Split texts into lines for difflib
+        lines1 = extracted_text_1.splitlines()
+        lines2 = extracted_text_2.splitlines()
+
+        # Generate the diff in unified format
+        diff_generator = difflib.unified_diff(
+            lines1, lines2,
+            fromfile=file1.filename, 
+            tofile=file2.filename, 
+            lineterm='\n' # Ensure consistent line endings
+        )
+        unified_diff_str = "\n".join(diff_generator) # Join the generated lines
+        logger.info(f"[ExplainDiff] Generated unified diff (length: {len(unified_diff_str)}).")
+
+        # Handle case where there is no difference
+        if not unified_diff_str:
+            logger.info(f"[ExplainDiff] No differences found between {file1.filename} and {file2.filename}.")
+            explanation = "No textual differences found between the two documents."
+        else:
+            # 6. Prepare AI Prompt
+            try:
+                template = jinja_env.get_template("diff_explanation_prompt.jinja")
+                prompt = template.render(
+                    filename1=file1.filename,
+                    filename2=file2.filename,
+                    unified_diff=unified_diff_str
+                )
+                logger.info(f"[ExplainDiff] Generated explanation prompt for AI.")
+            except Exception as template_e:
+                logger.error(f"[ExplainDiff] Failed to render Jinja template: {template_e}", exc_info=True)
+                raise HTTPException(status_code=500, detail="Internal server error: Failed to prepare explanation prompt.")
+
+            # 7. Call AI Service
+            logger.info(f"[ExplainDiff] Sending request to AI for explanation.")
+            ai_response_raw = await generate_text_from_gemini(prompt)
+
+            if ai_response_raw.startswith("Error:"):
+                logger.error(f"[ExplainDiff] AI service returned an error: {ai_response_raw}")
+                raise HTTPException(status_code=502, detail=f"AI service failed during explanation: {ai_response_raw}")
+            
+            explanation = ai_response_raw.strip()
+            logger.info(f"[ExplainDiff] Received explanation from AI.")
+
+        # 8. Return the response
+        return DiffExplanationResponse(
+            filename1=file1.filename,
+            filename2=file2.filename,
+            explanation=explanation
+        )
+
+    except HTTPException as http_exc:
+        # Re-raise known HTTP exceptions
+        raise http_exc
+    except Exception as e:
+        logger.error(f"[ExplainDiff] Error processing files {file1.filename}/{file2.filename}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred during diff explanation: {e}")
+    finally:
+        # 9. Clean up temporary files
+        for temp_path in [temp_file_path_1, temp_file_path_2]:
+            if temp_path and temp_path.exists():
+                try:
+                    temp_path.unlink()
+                    logger.info(f"[ExplainDiff] Deleted temporary file: {temp_path}")
+                except Exception as del_e:
+                    logger.error(f"[ExplainDiff] Failed to delete temporary file {temp_path}: {del_e}")
+        # Close file handles
+        await file1.close()
+        await file2.close()
 
 # --- Main execution ---
 if __name__ == "__main__":
