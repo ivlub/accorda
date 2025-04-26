@@ -118,16 +118,32 @@
   /* Target the diff container specifically within this component */
   .diff-container :global(.d2h-code-side-linenumber),
   .diff-container :global(.d2h-code-linenumber) {
-    /* Override sticky positioning that might be causing the scrolling issue */
-    position: relative !important; /* Try relative positioning */
-    /* Alternatively, try position: static !important; */
-     left: auto !important; /* Reset any horizontal positioning */
-     z-index: auto !important; /* Reset z-index */
+    /* Hide the line number columns */
+    display: none !important;
+    /* Original positioning rules removed/commented out
+    position: relative !important; 
+     left: auto !important; 
+     z-index: auto !important; 
+    */
+  }
+
+  /* Hide the @@ hunk header lines - trying more specific selector */
+  .diff-container :global(table.d2h-diff-table > tbody.d2h-diff-tbody > tr > td.d2h-hunk-header) {
+      display: none !important;
   }
 
   /* Ensure the overall wrapper maintains layout */
   .diff-container :global(.d2h-wrapper) {
       position: relative; /* Establish a positioning context if needed */
+  }
+
+  /* Hide the technical file header */
+  .diff-container :global(.d2h-file-header) {
+    display: none !important;
+  }
+
+  .d2h-code-side-line {
+    display: none !important;
   }
 </style>
 
