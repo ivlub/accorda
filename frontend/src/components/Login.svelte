@@ -144,13 +144,28 @@
         }
     }
 
+    /* Changed keyframes to animate fill-opacity for fade effect */
+    @keyframes fill-in {
+        from {
+            fill-opacity: 0;
+        }
+        to {
+            fill-opacity: 1;
+        }
+    }
+
     .logo-path-animate {
-        stroke: currentColor; /* Use the text color set on the parent div */
-        stroke-width: 8; /* Increased stroke width */
-        fill: none; /* Hide the default fill */
-        stroke-dasharray: 5000; /* Increased value */
-        stroke-dashoffset: 5000; /* Increased value */
-        animation: draw 3s ease-in-out forwards; /* Apply animation */
-        animation-delay: 0.5s; /* Small delay before starting */
+        stroke: currentColor; 
+        stroke-width: 8; 
+        fill: currentColor; /* Set fill color directly */
+        fill-opacity: 0; /* Start fully transparent */
+        stroke-dasharray: 5000; 
+        stroke-dashoffset: 5000; 
+        /* Apply both animations */
+        /* Draw animation: 3s duration, 0.5s delay */
+        /* Fill animation (opacity): 0.5s duration, 2.0s delay (starts earlier), ease-out timing */
+        animation: 
+            draw 3s linear forwards 0.5s,
+            fill-in 0.5s ease-out forwards 2.0s; /* Decreased delay for fill fade */
     }
 </style> 
