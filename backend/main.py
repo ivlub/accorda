@@ -898,6 +898,7 @@ async def explain_contract_diff(file1: UploadFile = File(...), file2: UploadFile
 
 class DiffImpactChange(BaseModel):
     category: Literal['Beneficial', 'Likely Neutral', 'Prejudicial', 'Further Review Required']
+    affected_party: Literal['Disclosing Party', 'Receiving Party', 'Both Parties', 'Neither Party']
     explanation: str
     change_summary: str 
 
@@ -1015,44 +1016,56 @@ async def analyze_diff_impact(
                 message="No textual differences found between the documents."
             )
 
-        # 6. Prepare AI Prompt using a new Jinja template
+        # 6. Prepare AI Prompt using Jinja templates
         try:
-            categories_definition = """
-            Categories:
-            - Beneficial: A change that clearly increases the control, protection, or rights of the party from the specified perspective ('{{ perspective_filename }}'). Examples: Gains rights, reduces obligations, adds favorable terms like 'sole discretion', 'reimbursed', 'prior approval'.
-            - Likely Neutral: Semantic changes, rephrasing, clarifications, correcting typos, or minor adjustments that don't significantly alter the substantive rights or obligations of '{{ perspective_filename }}'. **This includes filling in previously blank information (like names, dates, addresses) or making terms more specific, unless the specific information added is itself prejudicial.** State why it's likely neutral.
-            - Prejudicial: A change that clearly disadvantages '{{ perspective_filename }}' by **imposing substantive new obligations, removing significant rights, adding unfavorable terms, or introducing clear risk.** Examples: Other party gets 'sole discretion', 'unlimited liability', imposing indemnification, waiving rights, penalties. **Simply making a term specific (like filling in a blank) is NOT prejudicial unless the specific term itself creates a disadvantage.**
-            - Further Review Required: Changes that are ambiguous, complex, or whose impact depends heavily on context or external factors for '{{ perspective_filename }}'. Examples: 'notwithstanding', 'automatic renewal', 'binding arbitration'. Explain why review is needed.
-            """
-
-            # Output format example remains the same
-            output_format_example = """
+            # Load category definitions from file (remains the same)
+            try:
+                categories_template = jinja_env.get_template("diff_impact_categories.jinja")
+                categories_definition_rendered = categories_template.render(perspective_filename=perspective_filename)
+            except Exception as cat_e:
+                # ... error handling ...
+                raise HTTPException(status_code=500, detail="Internal server error: Failed to load category definitions.")
+            
+            # Load and render the output example template, then modify it if needed or define it here
+            # For simplicity here, let's define the example string directly
+            output_format_example_rendered = """
             Output Format Example (Respond ONLY with the JSON list, no other text):
             [
               {
                 "category": "Beneficial",
-                "explanation": "Explanation focusing on the impact to {{ perspective_filename }}.",
-                "change_summary": "Removed sentence X. Added sentence Y."
+                "affected_party": "Disclosing Party", 
+                "explanation": "Explanation of why this benefits the Disclosing Party.",
+                "change_summary": "Removed clause X, granting more rights to Disclosing Party."
               },
               {
                 "category": "Prejudicial",
-                "explanation": "...",
-                "change_summary": "Changed deadline from '30 days' to '15 days' in section Z."
+                "affected_party": "Receiving Party", 
+                "explanation": "Explanation of why this disadvantages the Receiving Party.",
+                "change_summary": "Added new reporting obligation for Receiving Party in section Y."
+              },
+              {
+                 "category": "Likely Neutral",
+                 "affected_party": "Both Parties", 
+                 "explanation": "Clarification affecting both parties equally.",
+                 "change_summary": "Corrected typo in definition Z."
               }
             ]
             """
-            # --- <<< END: UPDATED Example >>> ---
             
-            template = jinja_env.get_template("diff_impact_prompt.jinja") 
-            prompt = template.render(
+            # Load the main prompt template
+            main_template = jinja_env.get_template("diff_impact_prompt.jinja") 
+            
+            # Render the main prompt, passing the loaded/updated content
+            prompt = main_template.render(
                 perspective_filename=perspective_filename,
                 filename1=from_file_name, 
                 filename2=to_file_name,   
                 unified_diff=unified_diff_str,
-                categories_definition=categories_definition, # Pass NEW definition
-                output_format_example=output_format_example # Pass existing example
+                categories_definition=categories_definition_rendered, 
+                output_format_example=output_format_example_rendered # Use updated example
             )
             logger.info(f"[ImpactAnalysis] Generated impact analysis prompt for AI.")
+            
         except Exception as template_e:
             logger.error(f"[ImpactAnalysis] Failed render impact template: {template_e}", exc_info=True)
             raise HTTPException(status_code=500, detail="Internal server error: Failed to prepare impact analysis prompt.")

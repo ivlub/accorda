@@ -1,14 +1,15 @@
 {# prompts/diff_impact_prompt.jinja #}
 Analyze the provided unified diff between two contract files: '{{ filename1 }}' and '{{ filename2 }}'.
-Your goal is to identify significant changes and evaluate their impact *strictly from the perspective of '{{ perspective_filename }}'*. 
+Your goal is to identify significant changes and evaluate their impact.
 
 Use the following categories and definitions for your analysis:
 {{ categories_definition }}
 
 Focus ONLY on the differences shown in the diff. For EACH significant change identified in the diff (each hunk or logical change within a hunk), provide an entry in the JSON list containing:
-1.  The category ('Beneficial', 'Likely Neutral', 'Prejudicial', 'Further Review Required') based on the impact to '{{ perspective_filename }}'.
-2.  A concise explanation for your categorization, referencing the specific change in the diff and explaining WHY it fits the category from the perspective of '{{ perspective_filename }}'.
-3.  A clear, non-technical summary of the actual textual change (`change_summary`). Describe what was removed and what was added in plain language. For example: "Removed sentence: '...'. Added sentence: '...'" or "Changed phrase 'old phrase' to 'new phrase' in section X."
+1.  The category ('Beneficial', 'Likely Neutral', 'Prejudicial', 'Further Review Required') based on the impact definitions.
+2.  A concise explanation for your categorization, referencing the specific change in the diff and explaining WHY it fits the category.
+3.  A clear, non-technical summary of the actual textual change (`change_summary`).
+4.  The party primarily affected by this specific change (`affected_party`). This should be one of: 'Disclosing Party', 'Receiving Party', 'Both Parties', or 'Neither Party'. Determine this based on standard contract roles and the content of the change.
 
 Return your analysis ONLY as a JSON list of objects, adhering strictly to the format example below. Do not include any introductory text, explanations, or markdown formatting outside the JSON structure itself. Ensure the JSON is valid.
 {{ output_format_example }}

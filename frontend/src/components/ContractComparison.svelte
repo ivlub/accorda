@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { fade } from 'svelte/transition';
-  import { UploadCloud, Scale, Loader2, AlertTriangle, FileUp, FileDiff, Download, BrainCircuit, ChevronDown, ChevronUp, FileText, Filter } from 'lucide-svelte';
+  import { UploadCloud, Scale, Loader2, AlertTriangle, FileUp, FileDiff, Download, BrainCircuit, ChevronDown, ChevronUp, FileText, Filter, Users } from 'lucide-svelte';
   import * as Diff from 'diff';
   import * as Diff2Html from 'diff2html';
   import 'diff2html/bundles/css/diff2html.min.css';
@@ -20,7 +20,12 @@
 
   let selectedPerspective: 'file1' | 'file2' | null = null;
   let isAnalyzingImpact = false;
-  let impactAnalysisResult: Array<{category: string; explanation: string; change_summary: string}> | null = null;
+  let impactAnalysisResult: Array<{
+      category: string; 
+      affected_party: 'Disclosing Party' | 'Receiving Party' | 'Both Parties' | 'Neither Party';
+      explanation: string; 
+      change_summary: string
+  }> | null = null;
   let impactAnalysisErrorMessage: string | null = null;
 
   let isExplanationOpen = true;
@@ -28,6 +33,9 @@
 
   let selectedImpactCategories: string[] = [];
   const allImpactCategories = ['Beneficial', 'Likely Neutral', 'Prejudicial', 'Further Review Required'];
+
+  let selectedAffectedParties: string[] = [];
+  const allAffectedParties = ['Disclosing Party', 'Receiving Party', 'Both Parties', 'Neither Party'];
 
   function handleFileSelect(event: Event, fileNumber: 1 | 2) {
       const target = event.target as HTMLInputElement;
@@ -433,9 +441,13 @@
   }
 
   $: filteredImpactAnalysisResult = impactAnalysisResult 
-      ? impactAnalysisResult.filter(item => 
-          selectedImpactCategories.length === 0 || selectedImpactCategories.includes(item.category)
-        )
+      ? impactAnalysisResult
+          .filter(item => 
+              selectedImpactCategories.length === 0 || selectedImpactCategories.includes(item.category)
+          )
+          .filter(item => 
+              selectedAffectedParties.length === 0 || selectedAffectedParties.includes(item.affected_party)
+          )
       : [];
 
 </script>
@@ -608,6 +620,52 @@
        border-color: #d1d5db; /* neutral-medium */
    }
 
+   .filter-group {
+       margin-bottom: 0.75rem; /* mb-3 */
+       padding-bottom: 0.75rem; /* pb-3 */
+       border-bottom: 1px solid #f3f4f6; /* neutral-lighter */
+   }
+   .filter-group:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+        margin-bottom: 0;
+   }
+   .filter-label {
+        display: flex;
+        align-items: center;
+        font-size: 0.75rem; /* text-xs */
+        font-weight: 500; /* font-medium */
+        color: #6b7280; /* neutral-medium */
+        margin-bottom: 0.5rem; /* mb-2 */
+   }
+   .filter-controls {
+       display: flex;
+       flex-wrap: wrap;
+       align-items: center;
+   }
+
+   /* Adjust filter button style slightly */
+   .filter-button {
+       /* ... existing styles ... */
+       margin-bottom: 4px; /* Reduce bottom margin slightly */
+   }
+   .filter-button.clear-button {
+        color: #6b7280; /* neutral-medium */
+        background-color: #f9fafb; /* neutral-lightest */
+        padding: 4px 8px;
+   }
+   .filter-button.clear-button:hover {
+        color: #dc2626; /* red-600 */
+        border-color: #fecaca; /* red-200 */
+        background-color: #fee2e2; /* red-100 */
+   }
+
+    /* Specific styles for party filter buttons if needed */
+   .filter-button.active.filter-DisclosingParty { background-color: #ccfbf1; color: #0d9488; } /* teal */
+   .filter-button.active.filter-ReceivingParty { background-color: #dbeafe; color: #2563eb; } /* blue */
+   .filter-button.active.filter-BothParties { background-color: #e5e5e5; color: #525252; } /* neutral */
+   .filter-button.active.filter-NeitherParty { background-color: #f5f3ff; color: #7c3aed; } /* violet */
+
 </style>
 
 <div class="max-w-7xl mx-auto">
@@ -773,36 +831,71 @@
               </div>
 
               {#if impactAnalysisResult && impactAnalysisResult.length > 0}
-                <div class="mb-4 pb-3 border-b border-neutral-light">
-                  <label class="block text-xs font-medium text-neutral-medium mb-2 flex items-center">
-                     <svelte:component this={Filter} class="w-3 h-3 mr-1"/> 
-                     Filter by Category:
-                  </label>
-                  <div>
-                      {#each allImpactCategories as category}
-                        {@const isActive = selectedImpactCategories.includes(category)}
-                        <button 
-                            class="filter-button {isActive ? 'active' : ''} filter-{category.replace(' ', '')}"
-                            on:click={() => {
-                                if (isActive) {
-                                    selectedImpactCategories = selectedImpactCategories.filter(c => c !== category);
-                                } else {
-                                    selectedImpactCategories = [...selectedImpactCategories, category];
-                                }
-                            }}
-                        >
-                          {category}
-                        </button>
-                      {/each}
-                      {#if selectedImpactCategories.length > 0}
-                        <button 
-                            class="filter-button text-neutral-medium hover:text-red-600 hover:border-red-300 text-xs ml-1"
-                            title="Clear all filters"
-                            on:click={() => selectedImpactCategories = []}
-                        >
-                          &times; Clear
-                        </button>
-                      {/if}
+                <div class="mb-4 border-b border-neutral-light pb-1"> 
+                  <div class="filter-group">
+                    <label class="filter-label">
+                       <svelte:component this={Filter} class="w-3 h-3 mr-1.5"/> 
+                       Filter by Category:
+                    </label>
+                    <div class="filter-controls">
+                        {#each allImpactCategories as category}
+                          {@const isActive = selectedImpactCategories.includes(category)}
+                          <button 
+                              class="filter-button {isActive ? 'active' : ''} filter-{category.replace(' ', '')}"
+                              on:click={() => {
+                                  if (isActive) {
+                                      selectedImpactCategories = selectedImpactCategories.filter(c => c !== category);
+                                  } else {
+                                      selectedImpactCategories = [...selectedImpactCategories, category];
+                                  }
+                              }}
+                          >
+                            {category}
+                          </button>
+                        {/each}
+                        {#if selectedImpactCategories.length > 0}
+                          <button 
+                              class="filter-button clear-button ml-1"
+                              title="Clear category filters"
+                              on:click={() => selectedImpactCategories = []}
+                          >
+                            &times; Clear Categories
+                          </button>
+                        {/if}
+                    </div>
+                  </div>
+                  
+                  <div class="filter-group">
+                     <label class="filter-label">
+                        <svelte:component this={Users} class="w-3.5 h-3.5 mr-1.5"/> 
+                        Filter by Affected Party:
+                     </label>
+                    <div class="filter-controls">
+                        {#each allAffectedParties as party}
+                          {@const isActive = selectedAffectedParties.includes(party)}
+                          <button 
+                              class="filter-button {isActive ? 'active' : ''} filter-{party.replace(' ', '')}"
+                              on:click={() => {
+                                  if (isActive) {
+                                      selectedAffectedParties = selectedAffectedParties.filter(p => p !== party);
+                                  } else {
+                                      selectedAffectedParties = [...selectedAffectedParties, party];
+                                  }
+                              }}
+                          >
+                            {party}
+                          </button>
+                        {/each}
+                         {#if selectedAffectedParties.length > 0}
+                          <button 
+                              class="filter-button clear-button ml-1"
+                              title="Clear party filters"
+                              on:click={() => selectedAffectedParties = []}
+                          >
+                            &times; Clear Parties
+                          </button>
+                        {/if}
+                    </div>
                   </div>
                 </div>
               {/if}
@@ -821,11 +914,13 @@
                             <div class="impact-item">
                                <div class="impact-item-header">
                                    <span class="impact-category-badge impact-category-{item.category.replace(' ', '')}">{item.category}</span>
-                                   {#if selectedPerspective === 'file1'}
-                                       <span class="text-xs text-neutral-medium">(Impact to {uploadedFile1Name})</span>
-                                   {:else if selectedPerspective === 'file2'}
-                                        <span class="text-xs text-neutral-medium">(Impact to {uploadedFile2Name})</span>
-                                   {/if}
+                                   <span class="text-xs text-neutral-medium ml-1"> 
+                                        {#if item.affected_party === 'Both Parties' || item.affected_party === 'Neither Party'}
+                                            (Affects {item.affected_party})
+                                        {:else}
+                                            (For {item.affected_party})
+                                        {/if}
+                                   </span>
                                </div>
                                 <p class="whitespace-pre-wrap">{item.explanation}</p>
                                 {#if item.change_summary}
@@ -836,10 +931,10 @@
                             </div>
                         {/each}
                      {:else if impactAnalysisResult && impactAnalysisResult.length > 0 && filteredImpactAnalysisResult.length === 0}
-                          <p class="text-neutral-medium italic py-4">No results match the selected filter(s).</p>
+                          <p class="text-neutral-medium italic py-4">No results match the selected filter combination.</p>
                      {:else if impactAnalysisResult && impactAnalysisResult.length === 0 && !impactAnalysisErrorMessage}
                          {#if selectedPerspective}  
-                            <p class="text-neutral-medium italic py-4">No specific impacts requiring categorization were identified for {selectedPerspective === 'file1' ? uploadedFile1Name : uploadedFile2Name}.</p>
+                            <p class="text-neutral-medium italic py-4">No specific impacts requiring categorization were identified.</p>
                          {/if}
                     {:else if impactAnalysisErrorMessage}
                         <div class="text-red-600 flex items-start py-4">
