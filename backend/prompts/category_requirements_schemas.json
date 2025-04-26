@@ -23,29 +23,29 @@
       "date_of_formation": {
         "status": "extracted",
         "value": "This Agreement is made effective as of January 1, 2024.",
-        "location": "Preamble, Page 1"
+        "location": "Preamble,Paragraph 1, Page 1"
       },
       "jurisdiction": {
         "status": "extracted",
         "value": "This Agreement shall be governed by and construed in accordance with the laws of the State of Delaware, without regard to its conflict of laws principles.",
         "location": "Section 12.1"
       },
-      "parties_identification": {
+      "parties_of_the_contract": {
         "status": "review_needed",
         "value": "Disclosing Party: Innovate Corp., 123 Tech Lane, Silicon Valley, CA 94000, represented by Jane Doe, CEO.\nReceiving Party: ______________ [Name and Address Missing]",
         "location": "Parties Section, Page 1"
       },
-      "definition_confidential_info": {
+      "definitions": {
         "status": "extracted",
         "value": "'Confidential Information' means all non-public information disclosed by Disclosing Party... including business plans, customer lists, and technical data, but excluding information that is publicly known.",
-        "location": "Section 1. Definition of Confidential Information"
+        "location": "Section 1. Definition of Confidential Information, Page 1"
       },
-      "people_beneficiaries": {
+      "beneficiaries": {
         "status": "missing",
         "value": null,
         "location": null
       },
-      "object_of_contract": {
+      "object_of_the_contract": {
         "status": "extracted",
         "value": "The parties wish to explore a potential business relationship concerning the development of a new software product (the 'Purpose').",
         "location": "Recitals, Page 1"
@@ -65,12 +65,12 @@
         "value": "Receiving Party shall hold Confidential Information in strict confidence, use it only for the Purpose, and return or destroy it upon request.",
         "location": "Section 3. Obligations of Receiving Party"
       },
-       "rights_disclosing": {
+       "rights_of_the_disclosing_party": {
         "status": "extracted",
         "value": "Disclosing Party retains all rights, title, and interest in its Confidential Information.",
         "location": "Section 5. Ownership"
        },
-       "rights_receiving": {
+       "rights_of_the_receiving_party": {
         "status": "extracted",
         "value": "No license under any patent, copyright, or trademark is granted.",
         "location": "Section 5. Ownership"
@@ -85,7 +85,7 @@
         "value": "This Agreement may be terminated by either party upon thirty (30) days written notice.",
         "location": "Section 9. Termination"
        },
-       "penalty_clause": {
+       "penalty_clauses": {
         "status": "missing",
         "value": null,
         "location": null
@@ -95,7 +95,7 @@
         "value": "Disclosing Party is entitled to seek injunctive relief for any breach.",
         "location": "Section 10. Remedies"
        },
-       "adr_clause": {
+       "alternative_dispute_resolution_clauses": {
         "status": "extracted",
         "value": "Any disputes arising under this Agreement shall be resolved through binding arbitration in Wilmington, Delaware.",
         "location": "Section 12.2"
