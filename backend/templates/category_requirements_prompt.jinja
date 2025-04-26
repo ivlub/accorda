@@ -3,13 +3,14 @@ Analyze the following contract document based ONLY on the requirements listed in
 For each criterion `id` in the schema:
 1.  **Extract** the relevant information or text directly from the contract document that addresses the criterion's description.
 2.  **Determine the status**: 
-    *   `"extracted"`: If you found and extracted the relevant information.
+    *   `"extracted"`: If you found and extracted the complete, relevant information.
     *   `"missing"`: If the information for the criterion is not present in the document.
-    *   `"review_needed"`: If the information is present but ambiguous, unclear, requires significant legal interpretation beyond simple extraction, or seems potentially contradictory.
-3.  **Identify the location**: Specify where in the document you found the information (e.g., "Section 3.1", "Page 5, Paragraph 2", "Recitals"). If the status is `missing`, the location should be `null`.
+    *   `"review_needed"`: If the information is present but ambiguous, unclear, requires significant legal interpretation beyond simple extraction, seems potentially contradictory, **or is clearly incomplete (e.g., contains placeholders like '____________' or '[Insert Name Here]')**.
+3.  **Identify the location**: Specify where in the document you found the information (e.g., "Section 3.1", "Page 5, Paragraph 2", "Recitals"). If the status is `missing`, the location should be `null`. If `review_needed`, provide the location where the incomplete/ambiguous text was found.
 4.  **Provide the value**: 
     *   If the status is `"extracted"`, the `value` should be the exact text snippet you extracted.
-    *   If the status is `"missing"` or `"review_needed"`, the `value` should be `null` (or a brief note if `review_needed` like "Ambiguous reference found, requires interpretation"). Generally prefer null unless a note adds significant value.
+    *   If the status is `"missing"`, the `value` should be `null`.
+    *   If the status is `"review_needed"`, the `value` should be the incomplete or ambiguous text snippet found (e.g., the part containing '____________').
 
 Respond ONLY with a valid JSON object containing key-value pairs, where the key is the criterion `id` from the schema and the value is an object `{ "status": "<extracted | missing | review_needed>", "value": "<extracted text or null>", "location": "<location string or null>" }`.
 

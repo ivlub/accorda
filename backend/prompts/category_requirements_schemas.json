@@ -31,8 +31,8 @@
         "location": "Section 12.1"
       },
       "parties_identification": {
-        "status": "extracted",
-        "value": "Disclosing Party: Innovate Corp., 123 Tech Lane, Silicon Valley, CA 94000, represented by Jane Doe, CEO.\nReceiving Party: Data Solutions Ltd., 456 Data Drive, Austin, TX 78701, represented by John Smith, CTO.",
+        "status": "review_needed",
+        "value": "Disclosing Party: Innovate Corp., 123 Tech Lane, Silicon Valley, CA 94000, represented by Jane Doe, CEO.\nReceiving Party: ______________ [Name and Address Missing]",
         "location": "Parties Section, Page 1"
       },
       "definition_confidential_info": {
