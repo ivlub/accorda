@@ -4,6 +4,9 @@ services:
   backend:
     build: ./backend
     container_name: fastapi_backend
+    # Load environment variables from the .env file in the project root
+    env_file:
+      - .env
     ports:
       - "8000:8000" # Expose backend port to host
     volumes:
