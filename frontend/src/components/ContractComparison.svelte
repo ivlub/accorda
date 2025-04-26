@@ -136,7 +136,8 @@
   /* Override default background and add border for deleted text segments */
   .diff-container :global(del) {
       background-color: transparent !important; /* Override default red fill */
-      border: 2px solid red !important;
+      /* border: 2px solid red !important; */
+      background-color: rgb(244, 121, 121) !important;
       border-radius: 3px;
       padding: 0 2px;
       text-decoration: none !important; /* Remove default strikethrough if present */
@@ -145,7 +146,8 @@
   /* Override default background and add border for added text segments */
   .diff-container :global(ins) {
       background-color: transparent !important; /* Override default green fill */
-      border: 2px solid green !important;
+      /* border: 2px solid green !important; */
+      background-color: rgb(152, 225, 152) !important;
       border-radius: 3px;
       padding: 0 2px;
       text-decoration: none !important; /* Remove default underline if present */
