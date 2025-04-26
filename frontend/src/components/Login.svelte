@@ -3,7 +3,10 @@
 
     let username = '';
     let password = '';
-    let error = '';
+    let error = ''; // Local error for empty fields
+
+    // Prop to receive authentication error from parent
+    export let loginError = ''; 
 
     const dispatch = createEventDispatcher();
 
@@ -11,9 +14,10 @@
         // Basic validation
         if (!username || !password) {
             error = 'Please enter both username and password.';
+            loginError = ''; // Clear any previous auth error
             return;
         }
-        error = '';
+        error = ''; // Clear local error before dispatching
         // Dispatch the login attempt event with credentials
         dispatch('loginAttempt', { username, password });
     }
@@ -73,7 +77,9 @@
                     </div>
                 </div>
 
-                {#if error}
+                {#if loginError} <!-- Display authentication error from parent -->
+                    <p class="text-sm text-red-600 text-center font-sans">{loginError}</p>
+                {:else if error} <!-- Display local validation error -->
                     <p class="text-sm text-red-600 text-center font-sans">{error}</p>
                 {/if}
 

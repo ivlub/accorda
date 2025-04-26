@@ -14,6 +14,7 @@
   let currentView: View = 'welcome';
   let isLoggedIn = false; // Start as not logged in
   let isLoadingAfterLogin = false; // Added loading state
+  let isLoggingOut = false; // Added logout loading state
   let loginError = ''; // To display login errors if needed
   let loggedInUsername = ''; // Store the username
   let loggedInUserEmail = ''; // Store the email
@@ -41,6 +42,7 @@
     const user = users[username]; // Get user data
 
     if (user && user.password === password) {
+      loginError = ''; // Clear error on successful attempt start
       isLoadingAfterLogin = true; // Start loading animation
       loggedInUsername = user.name; // Set username
       loggedInUserEmail = user.email; // Set email
@@ -61,25 +63,33 @@
 
   // Sign out handler
   function handleSignOut() {
-    isLoggedIn = false;
-    loggedInUsername = ''; // Clear username
-    loggedInUserEmail = ''; // Clear email
-    // Optionally reset view or do other cleanup
-    // currentView = 'welcome';
+    isLoggingOut = true; // Start logout spinner
+    setTimeout(() => {
+      isLoggedIn = false;
+      loggedInUsername = ''; // Clear username
+      loggedInUserEmail = ''; // Clear email
+      loginError = ''; // Clear any previous login error
+      isLoggingOut = false; // Stop logout spinner
+      // Optionally reset view or do other cleanup
+      // currentView = 'welcome';
+    }, 500); // 0.5 second delay
   }
 
   // Could add logic here later to hide sidebar on welcome screen if desired
 
 </script>
 
-{#if !isLoggedIn && !isLoadingAfterLogin}
-  <Login on:loginAttempt={handleLoginAttempt} />
-{:else if isLoadingAfterLogin}
-  <!-- Show spinner full screen while loading -->
+{#if isLoggingOut} <!-- Show spinner during logout -->
   <div class="fixed inset-0 flex items-center justify-center bg-neutral-lightest z-50">
       <LoadingSpinner />
   </div>
-{:else}
+{:else if !isLoggedIn && !isLoadingAfterLogin} <!-- Show Login -->
+  <Login on:loginAttempt={handleLoginAttempt} loginError={loginError} />
+{:else if isLoadingAfterLogin} <!-- Show spinner during login -->
+  <div class="fixed inset-0 flex items-center justify-center bg-neutral-lightest z-50">
+      <LoadingSpinner />
+  </div>
+{:else} <!-- Show App -->
   <!-- Existing App Layout -->
   <div class="flex h-screen bg-neutral-lightest">
     <!-- Sidebar (Hidden on small screens, fixed on medium+) -->
