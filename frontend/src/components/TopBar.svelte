@@ -59,7 +59,7 @@
         <span class="sr-only">View notifications</span>
         <svelte:component this={Bell} class="h-5 w-5" strokeWidth={1.75} />
         <!-- Notification Dot -->
-        <span class="absolute top-1 right-1 block h-2 w-2 rounded-full bg-red-500 ring-1 ring-white"></span>
+        <span class="absolute top-1 right-1 block h-2 w-2 rounded-full bg-red-500 nice-pulse-animation"></span>
       </button>
 
        <!-- Placeholder: Help/Support -->
@@ -87,3 +87,21 @@
 <Modal bind:showModal={showNotificationModal} title="Notification" on:close={closeNotificationModal}>
     <p>Yes, even this button does something. Attention to detail is important for us.</p>
 </Modal> 
+
+<style>
+  @keyframes nice-pulse {
+    0%, 100% {
+      /* No shadow at start/end */
+      box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); /* Use the red-500 color */
+    }
+    70% {
+      /* Expand shadow outwards */
+      box-shadow: 0 0 0 6px rgba(239, 68, 68, 0);
+    }
+  }
+
+  .nice-pulse-animation {
+    /* Apply ONLY the animation */
+    animation: nice-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+</style> 
