@@ -1,38 +1,110 @@
 {
   "Non-Disclosure Agreement": {
     "criteria": [
-      {"id": "date_of_formation", "description": "Is the effective date or date of agreement formation clearly stated?"},
-      {"id": "jurisdiction", "description": "Is the governing law or jurisdiction specified?"},
-      {"id": "parties_identification", "description": "Are all parties (Disclosing and Receiving) fully identified with names and addresses? Are representatives named?"},
-      {"id": "recitals", "description": "Are there recitals explaining the background or purpose of the agreement?"},
-      {"id": "definition_confidential_info", "description": "Is 'Confidential Information' clearly defined, including examples or exclusions?"},
-      {"id": "object_of_contract", "description": "Is the purpose or object of the NDA (e.g., specific business opportunity, discussion topic) clearly stated?"},
-      {"id": "obligations", "description": "Are the core obligations of the Receiving Party (non-disclosure, non-use, return/destruction) clearly defined? Are the Disclosing Party's obligations (if any) clear?"},
-      {"id": "rights_ownership", "description": "Does the agreement state who owns the confidential information and that no license or title is granted?"},
-      {"id": "liability_breach", "description": "Does the agreement address liability or consequences in case of a breach?"},
-      {"id": "term_duration", "description": "Is the duration of the confidentiality obligation specified (term or condition for termination)?"},
-      {"id": "termination_clause", "description": "Are the conditions or process for terminating the agreement itself outlined?"},
-      {"id": "remedies", "description": "Does the agreement mention available remedies (e.g., injunctive relief)?"},
-      {"id": "penalties", "description": "Are specific penalties for breach mentioned (less common, but check)?"},
-      {"id": "relationship_of_parties", "description": "Does the agreement clarify the relationship (e.g., no partnership or joint venture created)?"},
-      {"id": "conflict_deviation", "description": "Does the agreement address potential conflicts or deviations (e.g., permitted disclosures, prior knowledge)?"}
+      {"id": "date_of_formation", "description": "Extract the effective date or date the agreement was formed."},
+      {"id": "jurisdiction", "description": "Extract the governing law or jurisdiction clause."},
+      {"id": "parties_identification", "description": "Extract the full names, addresses, and representative details (if mentioned) for all parties (Disclosing and Receiving)."},
+      {"id": "definition_confidential_info", "description": "Extract the definition of 'Confidential Information', including any specific examples or exclusions mentioned."},
+      {"id": "people_beneficiaries", "description": "Extract any mention of third-party beneficiaries or clauses indicating if the contract is strictly between the named parties ('intuitu personae')."},
+      {"id": "object_of_contract", "description": "Extract the stated purpose or object of the NDA (e.g., specific business opportunity, discussion topic)."},
+      {"id": "social_function", "description": "Extract any clauses describing the broader social or economic purpose, if explicitly stated (rare in NDAs)."},
+      {"id": "obligations_disclosing", "description": "Extract the obligations specifically placed upon the Disclosing Party."},
+      {"id": "obligations_receiving", "description": "Extract the core obligations placed upon the Receiving Party (e.g., non-disclosure, non-use, return/destruction)."},
+      {"id": "rights_disclosing", "description": "Extract the rights explicitly granted to or retained by the Disclosing Party."},
+      {"id": "rights_receiving", "description": "Extract the rights explicitly granted to the Receiving Party (often limited, e.g., right to use for evaluation)."},
+      {"id": "effect_conditions_term", "description": "Extract the duration of the confidentiality obligation (term) and any conditions affecting when the agreement takes effect or its ongoing validity."},
+      {"id": "termination", "description": "Extract the conditions or process for terminating the agreement itself."},
+      {"id": "penalty_clause", "description": "Extract any specific penalties mentioned for breach of the agreement."},
+      {"id": "remedies", "description": "Extract clauses mentioning available remedies (e.g., injunctive relief, damages)."},
+      {"id": "adr_clause", "description": "Extract any clause related to Alternative Dispute Resolution (e.g., arbitration, mediation)."},
+      {"id": "governing_law_clause", "description": "Extract the specific clause stating the governing law (duplicate of jurisdiction, but explicit request)."}
     ],
     "output_format_example": {
-       "date_of_formation": {"met": true, "explanation": "Effective date is clearly stated on page 1."},
-       "jurisdiction": {"met": true, "explanation": "Governed by the laws of the State of Washington (Section 12)."},
-       "parties_identification": {"met": false, "explanation": "Receiving Party name and address are blank."},
-       "recitals": {"met": true, "explanation": "Recitals clearly outline the purpose related to a business opportunity."},
-       "definition_confidential_info": {"met": true, "explanation": "Section 2 provides a comprehensive definition."},
-       "object_of_contract": {"met": true, "explanation": "Stated as discussions concerning a potential business opportunity."},
-       "obligations": {"met": true, "explanation": "Receiving Party obligations detailed in Section 3."},
-       "rights_ownership": {"met": true, "explanation": "Section 5 confirms Disclosing Party ownership."},
-       "liability_breach": {"met": "maybe", "explanation": "Liability isn't explicitly quantified, but breach implications are mentioned."},
-       "term_duration": {"met": true, "explanation": "Confidentiality term is 5 years from disclosure (Section 8)."},
-       "termination_clause": {"met": true, "explanation": "Termination conditions outlined in Section 9."},
-       "remedies": {"met": true, "explanation": "Injunctive relief is mentioned as a remedy (Section 10)."},
-       "penalties": {"met": false, "explanation": "No specific penalties are defined."},
-       "relationship_of_parties": {"met": true, "explanation": "Section 11 clarifies no other relationship is formed."},
-       "conflict_deviation": {"met": true, "explanation": "Permitted disclosures are listed in Section 4."}
+      "date_of_formation": {
+        "status": "extracted",
+        "value": "This Agreement is made effective as of January 1, 2024.",
+        "location": "Preamble, Page 1"
+      },
+      "jurisdiction": {
+        "status": "extracted",
+        "value": "This Agreement shall be governed by and construed in accordance with the laws of the State of Delaware, without regard to its conflict of laws principles.",
+        "location": "Section 12.1"
+      },
+      "parties_identification": {
+        "status": "extracted",
+        "value": "Disclosing Party: Innovate Corp., 123 Tech Lane, Silicon Valley, CA 94000, represented by Jane Doe, CEO.\nReceiving Party: Data Solutions Ltd., 456 Data Drive, Austin, TX 78701, represented by John Smith, CTO.",
+        "location": "Parties Section, Page 1"
+      },
+      "definition_confidential_info": {
+        "status": "extracted",
+        "value": "'Confidential Information' means all non-public information disclosed by Disclosing Party... including business plans, customer lists, and technical data, but excluding information that is publicly known.",
+        "location": "Section 1. Definition of Confidential Information"
+      },
+      "people_beneficiaries": {
+        "status": "missing",
+        "value": null,
+        "location": null
+      },
+      "object_of_contract": {
+        "status": "extracted",
+        "value": "The parties wish to explore a potential business relationship concerning the development of a new software product (the 'Purpose').",
+        "location": "Recitals, Page 1"
+      },
+      "social_function": {
+        "status": "missing",
+        "value": null,
+        "location": null
+      },
+       "obligations_disclosing": {
+        "status": "review_needed",
+        "value": "Disclosing Party shall mark confidential information appropriately.",
+        "location": "Section 2.3"
+      },
+      "obligations_receiving": {
+        "status": "extracted",
+        "value": "Receiving Party shall hold Confidential Information in strict confidence, use it only for the Purpose, and return or destroy it upon request.",
+        "location": "Section 3. Obligations of Receiving Party"
+      },
+       "rights_disclosing": {
+        "status": "extracted",
+        "value": "Disclosing Party retains all rights, title, and interest in its Confidential Information.",
+        "location": "Section 5. Ownership"
+       },
+       "rights_receiving": {
+        "status": "extracted",
+        "value": "No license under any patent, copyright, or trademark is granted.",
+        "location": "Section 5. Ownership"
+       },
+       "effect_conditions_term": {
+        "status": "extracted",
+        "value": "The obligations under this Agreement shall survive for a period of five (5) years from the date of disclosure.",
+        "location": "Section 8. Term"
+      },
+       "termination": {
+        "status": "extracted",
+        "value": "This Agreement may be terminated by either party upon thirty (30) days written notice.",
+        "location": "Section 9. Termination"
+       },
+       "penalty_clause": {
+        "status": "missing",
+        "value": null,
+        "location": null
+      },
+       "remedies": {
+        "status": "extracted",
+        "value": "Disclosing Party is entitled to seek injunctive relief for any breach.",
+        "location": "Section 10. Remedies"
+       },
+       "adr_clause": {
+        "status": "extracted",
+        "value": "Any disputes arising under this Agreement shall be resolved through binding arbitration in Wilmington, Delaware.",
+        "location": "Section 12.2"
+      },
+       "governing_law_clause": {
+         "status": "extracted",
+         "value": "This Agreement shall be governed by and construed in accordance with the laws of the State of Delaware.",
+         "location": "Section 12.1"
+       }
     }
   }
 } 

@@ -1,19 +1,26 @@
 Analyze the following contract document based ONLY on the requirements listed in the CATEGORY_REQUIREMENTS_SCHEMA provided below for the specific contract type: '{{ contract_category }}'.
 
-For each criterion in the schema, determine if it is met based *solely* on the document content and provide a detailed explanation of your decision. You must quote the particular sentence or part which made you decide the way you did. You must also include in which section of the contract you found the information.  
-For the `met` field, respond with:
-- `true` if the requirement is clearly and fully met.
-- `false` if the requirement is clearly not met or missing.
-- `"maybe"` (as a string) if the requirement is ambiguous, partially met, or there's significant uncertainty based on the text.
+For each criterion `id` in the schema:
+1.  **Extract** the relevant information or text directly from the contract document that addresses the criterion's description.
+2.  **Determine the status**: 
+    *   `"extracted"`: If you found and extracted the relevant information.
+    *   `"missing"`: If the information for the criterion is not present in the document.
+    *   `"review_needed"`: If the information is present but ambiguous, unclear, requires significant legal interpretation beyond simple extraction, or seems potentially contradictory.
+3.  **Identify the location**: Specify where in the document you found the information (e.g., "Section 3.1", "Page 5, Paragraph 2", "Recitals"). If the status is `missing`, the location should be `null`.
+4.  **Provide the value**: 
+    *   If the status is `"extracted"`, the `value` should be the exact text snippet you extracted.
+    *   If the status is `"missing"` or `"review_needed"`, the `value` should be `null` (or a brief note if `review_needed` like "Ambiguous reference found, requires interpretation"). Generally prefer null unless a note adds significant value.
 
-Respond ONLY with a JSON object containing key-value pairs, where the key is the criterion `id` from the schema and the value is an object `{ "met": <boolean | "maybe">, "explanation": "..." }`, like the example provided.
+Respond ONLY with a valid JSON object containing key-value pairs, where the key is the criterion `id` from the schema and the value is an object `{ "status": "<extracted | missing | review_needed>", "value": "<extracted text or null>", "location": "<location string or null>" }`.
 
-CATEGORY_REQUIREMENTS_SCHEMA (for '{{ contract_category }}'):
+Follow the structure EXACTLY as shown in the OUTPUT_FORMAT_EXAMPLE.
+
+CATEGORY_REQUIREMENTS_SCHEMA (Criteria Definitions for '{{ contract_category }}'):
 ```json
 {{ requirements_schema_str }}
 ```
 
-OUTPUT_FORMAT_EXAMPLE (for '{{ contract_category }}'):
+OUTPUT_FORMAT_EXAMPLE (Desired JSON Structure for '{{ contract_category }}'):
 ```json
 {{ output_format_example_str }}
 ```
@@ -23,4 +30,5 @@ CONTRACT_DOCUMENT:
 {{ document_text }}
 ---
 
-ANALYSIS_JSON_OUTPUT: 
+ANALYSIS_JSON_OUTPUT:
+```json

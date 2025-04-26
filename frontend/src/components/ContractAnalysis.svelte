@@ -38,15 +38,15 @@
     FormalAdequacy: FormalAdequacyCheck;
   }
 
-  // Category-Specific Requirements (New)
-  interface CategoryRequirementsResult {
-      met: boolean | 'maybe';
-      explanation: string;
+  // Category-Specific Requirements (Updated)
+  interface CategoryExtractionResult { // Renamed for clarity
+    status: 'extracted' | 'missing' | 'review_needed';
+    value: string | null;
+    location: string | null;
   }
-  // Use Record<string, T> for dictionaries with string keys
   interface CategoryRequirementsResponse {
       category: string;
-      analysis: Record<string, CategoryRequirementsResult> | null; 
+      analysis: Record<string, CategoryExtractionResult> | null; // Use new interface
       message?: string | null;
   }
 
@@ -62,7 +62,7 @@
   let contractSummary: string | null = null;
   let generalRequirementsResult: ContractRequirementsResponse | null = null; // Renamed
   let contractCategory: string | null = null;
-  let categoryAnalysisResult: Record<string, CategoryRequirementsResult> | null = null;
+  let categoryAnalysisResult: Record<string, CategoryExtractionResult> | null = null; // Use new interface
   let categoryAnalysisMessage: string | null = null; // For messages like "not supported"
   let analysisError: string | null = null; // Consolidated error message for general/category
   let summaryError: string | null = null; // <<< New state for summary-specific errors
@@ -188,12 +188,11 @@
     }
 
     // --- Call 3: Category-Specific Requirements ---
-    // Re-create FormData as it might be consumed by the first fetch in some environments
     try {
         console.log("[Analysis] Calling /check-category-requirements...");
         const responseCategory = await fetch(`${API_BASE_URL}/api/analyze/check-category-requirements`, {
             method: 'POST',
-            body: formDataCat, // Send form data again
+            body: formDataCat, 
         });
 
         if (!responseCategory.ok) {
@@ -202,12 +201,12 @@
             throw new Error(errorDetail);
         }
 
-        const resultCategory: CategoryRequirementsResponse = await responseCategory.json();
+        const resultCategory: CategoryRequirementsResponse = await responseCategory.json(); // Uses updated interface
         console.log("[Analysis] Category Requirements Result:", resultCategory);
         contractCategory = resultCategory.category;
-        categoryAnalysisResult = resultCategory.analysis; // Might be null
-        categoryAnalysisMessage = resultCategory.message ?? null; // Handle potential undefined message
-        analysisPhase = 'done'; // All finished successfully
+        categoryAnalysisResult = resultCategory.analysis; 
+        categoryAnalysisMessage = resultCategory.message ?? null; 
+        analysisPhase = 'done'; 
 
     } catch (error) {
         console.error("[Analysis] Category requirements call failed:", error);
@@ -227,7 +226,7 @@
       return name.replace(/([A-Z])/g, ' $1').trim(); // Add space before capital letters
   }
 
-  // New helper function to calculate status counts safely
+  // Helper function to calculate status counts for GENERAL requirements
   function calculateStatusCounts(criteria: object): { falseCount: number; maybeCount: number } {
       let falseCount = 0;
       let maybeCount = 0;
@@ -235,9 +234,9 @@
       if (!criteria) return { falseCount: 0, maybeCount: 0 };
 
       for (const result of Object.values(criteria)) {
-          // Type guard to ensure we're dealing with a potential result object
+          // Keep this specific to the GENERAL requirements structure
           if (result && typeof result === 'object' && 'met' in result) {
-              const checkResult = result as RequirementCheckResult; // Safe assertion after checks
+              const checkResult = result as RequirementCheckResult; 
               if (checkResult.met === false) {
                   falseCount++;
               } else if (checkResult.met === 'maybe') {
@@ -246,6 +245,16 @@
           }
       }
       return { falseCount, maybeCount };
+  }
+
+  // New helper for category status colors/icons (optional, can inline)
+  function getStatusProps(status: CategoryExtractionResult['status']): { color: string; icon: any; label: string } {
+      switch (status) {
+          case 'extracted': return { color: 'green', icon: CheckCircle2, label: 'Extracted' };
+          case 'missing': return { color: 'red', icon: XCircle, label: 'Missing' };
+          case 'review_needed': return { color: 'yellow', icon: HelpCircle, label: 'Review Needed' };
+          default: return { color: 'gray', icon: HelpCircle, label: 'Unknown' }; 
+      }
   }
 
 </script>
@@ -452,8 +461,8 @@
                  </div>
              {/if}
 
-            <!-- Category Specific Requirements Section -->
-            <details class="mt-8 group" open> <!-- Collapsible wrapper for category section -->
+            <!-- Category Specific Requirements Section (UPDATED) -->
+            <details class="mt-8 group" open> 
                  <summary class="list-none cursor-pointer flex items-center justify-between pb-3 border-b border-neutral-light mb-4">
                      <h3 id="category-results-heading" class="text-lg font-semibold text-neutral-dark font-serif">
                         {#if contractCategory}Specific Requirements for: {contractCategory}{:else}Category Specific Requirements{/if}
@@ -462,40 +471,57 @@
                  </summary>
                  <section aria-labelledby="category-results-heading" >
                     {#if analysisPhase === 'category'} 
-                         <!-- Loading state for category analysis -->
+                         <!-- Loading state -->
                          <div class="text-neutral-dark flex items-center justify-center text-center p-6 border border-dashed border-neutral-light rounded-md min-h-[100px]">
                              <div><svelte:component this={Loader2} class="animate-spin h-6 w-6 text-brand-muted mx-auto mb-2" /> Analyzing category-specific requirements...</div>
                          </div>
                     {:else if analysisPhase === 'done' && contractCategory}
-                        <!-- Display category results once done -->
+                        <!-- Display category extraction results -->
                         <div class="bg-neutral-white p-1 md:p-2 rounded-md border border-neutral-light shadow-sm">
                             {#if categoryAnalysisResult}
                                 <div class="space-y-3 p-2 md:p-4">
                                     {#each Object.entries(categoryAnalysisResult) as [key, result]} 
-                                        <!-- Inner collapsible criteria remain -->
+                                         {@const statusProps = getStatusProps(result.status)}
                                          <details class="border border-neutral-light rounded-md group" open>
                                              <summary class="list-none flex items-center justify-between bg-neutral-lightest px-4 py-3 cursor-pointer hover:bg-neutral-lighter transition duration-150 ease-in-out rounded-t-md">
                                                  <div class="flex items-center space-x-2 flex-wrap gap-y-1">
                                                       <span class="font-semibold font-serif text-base text-neutral-darkest">{formatCriterionKey(key)}</span>
-                                                      {#if result.met === true} <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800"><svelte:component this={CheckCircle2} class="w-3 h-3 mr-1"/> Met</span> {:else if result.met === false} <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800"><svelte:component this={XCircle} class="w-3 h-3 mr-1"/> Not Met</span> {:else} <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800"><svelte:component this={HelpCircle} class="w-3 h-3 mr-1"/> Maybe</span> {/if}
+                                                      <!-- Status Badge -->
+                                                      <span class={`inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-${statusProps.color}-100 text-${statusProps.color}-800`}>
+                                                          <svelte:component this={statusProps.icon} class="w-3 h-3 mr-1"/> {statusProps.label}
+                                                      </span>
                                                  </div>
                                                  <svelte:component this={ChevronDown} class="w-5 h-5 text-neutral-dark group-open:rotate-180 transition-transform flex-shrink-0 ml-2"/>
                                              </summary>
-                                             <div class="bg-white rounded-b-md p-4 text-sm">
-                                                 <p class="text-neutral-dark">{result.explanation}</p>
+                                             <div class="bg-white rounded-b-md p-4 text-sm space-y-2">
+                                                 {#if result.status === 'extracted' && result.value}
+                                                      <div class="prose prose-sm max-w-none text-neutral-darkest">
+                                                         <p><strong>Extracted Value:</strong></p> 
+                                                         <blockquote class="border-l-4 border-neutral-light pl-4 italic">{result.value}</blockquote>
+                                                      </div>
+                                                 {:else if result.status === 'review_needed' && result.value}
+                                                      <p class="text-yellow-700 bg-yellow-50 p-2 rounded border border-yellow-200"><strong>Note:</strong> {result.value}</p> 
+                                                 {/if}
+                                                 {#if result.location}
+                                                      <p class="text-xs text-neutral-medium">Location: <span class="font-mono bg-neutral-lightest px-1 py-0.5 rounded">{result.location}</span></p>
+                                                 {:else if result.status === 'missing'}
+                                                      <p class="text-xs text-red-700">Information not found in the document.</p>
+                                                 {:else if result.status === 'review_needed' && !result.location}
+                                                      <p class="text-xs text-yellow-700">Location unclear, requires review.</p>
+                                                 {/if}
                                              </div>
                                          </details>
                                     {/each}
                                 </div>
                             {:else if categoryAnalysisMessage} 
-                                 <!-- Message if analysis not available for category -->
+                                 <!-- Message if analysis not available -->
                                  <div class="text-neutral-medium px-4 py-6 text-center">
                                      <p>{categoryAnalysisMessage}</p>
                                  </div>
                             {/if}
                         </div>
                     {:else if analysisPhase === 'error' && analysisError && generalRequirementsResult} 
-                         <!-- Show error from second call if first call succeeded -->
+                         <!-- Error from category call shown if general succeeded -->
                          <div class="mt-4 p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-700 flex items-start space-x-2">
                              <svelte:component this={AlertTriangle} class="w-5 h-5 flex-shrink-0 mt-0.5" />
                              <div>

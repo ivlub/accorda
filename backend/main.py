@@ -412,14 +412,15 @@ class ContractRequirementsResponse(BaseModel):
     Firmness: FirmnessCheck
     FormalAdequacy: FormalAdequacyCheck
 
-# Category-Specific Requirements Models (Moved Here)
-class CategoryRequirementsResult(BaseModel):
-    met: bool | Literal['maybe']
-    explanation: str
+# Category-Specific Requirements Models (Updated)
+class CategoryExtractionResult(BaseModel): # Renamed for clarity
+    status: Literal['extracted', 'missing', 'review_needed']
+    value: str | None = None # Extracted text or null if missing/review_needed
+    location: str | None = None # E.g., "Section 5, Paragraph 2" or null
 
 class CategoryRequirementsResponse(BaseModel):
     category: str
-    analysis: Dict[str, CategoryRequirementsResult] | None = None 
+    analysis: Dict[str, CategoryExtractionResult] | None = None 
     message: str | None = None 
 
 # --- API Endpoints ---
@@ -525,7 +526,8 @@ async def check_contract_requirements(file: UploadFile = File(...)):
 async def check_category_requirements(file: UploadFile = File(...)):
     """
     Receives a contract file, determines its category, finds the category-specific 
-    schema, asks AI to check requirements against THAT schema, returns structured result.
+    schema (focused on EXTRACTION), asks AI to extract information based on THAT schema, 
+    and returns the structured result.
     """
     if not jinja_env:
         raise HTTPException(status_code=500, detail="Template engine not initialized.")
@@ -561,9 +563,10 @@ async def check_category_requirements(file: UploadFile = File(...)):
         category_schema = CATEGORY_REQUIREMENTS_SCHEMAS.get(category)
         if not category_schema or "criteria" not in category_schema or "output_format_example" not in category_schema:
             logger.warning(f"[CatReq] No valid schema found for '{category}' for file {filename}")
+            # Return the new response model structure
             return CategoryRequirementsResponse(category=category, analysis=None, message=f"Specific analysis not available for category: {category}")
 
-        # 4. Prepare the Prompt (using category template)
+        # 4. Prepare the Prompt (using category template and NEW schema)
         # Truncate text if necessary 
         MAX_TEXT_LENGTH = 50000 
         if len(extracted_content) > MAX_TEXT_LENGTH:
@@ -572,44 +575,80 @@ async def check_category_requirements(file: UploadFile = File(...)):
              processed_text = extracted_content
         
         try:
+            # These are now expected to contain the new {status, value, location} structure
             schema_str = json.dumps(category_schema["criteria"], indent=2)
             output_format_str = json.dumps(category_schema["output_format_example"], indent=2)
-            template = jinja_env.get_template("category_requirements_prompt.jinja") # Category prompt
+            template = jinja_env.get_template("category_requirements_prompt.jinja") # Assume this template asks for extraction now
             prompt = template.render(
                 document_text=processed_text, 
                 contract_category=category,
-                requirements_schema_str=schema_str,
-                output_format_example_str=output_format_str
+                requirements_schema_str=schema_str, # Schema defines what to extract
+                output_format_example_str=output_format_str # Example shows HOW to extract
             )
+            logger.info(f"[CatReq] Generated category extraction prompt for {filename}")
         except Exception as template_e:
             logger.error(f"[CatReq] Failed render category template: {template_e}", exc_info=True)
             raise HTTPException(status_code=500, detail="Failed to prepare category analysis prompt.")
 
         # 5. Call the AI service
+        # Consider using a model better suited for extraction if needed, e.g., Gemini Pro 1.5
         ai_response_raw = await generate_text_from_gemini(prompt)
         if ai_response_raw.startswith("Error:"):
-            raise HTTPException(status_code=502, detail=f"AI service failed (category): {ai_response_raw}")
+            raise HTTPException(status_code=502, detail=f"AI service failed (category extraction): {ai_response_raw}")
 
-        # 6. Process and validate AI response
+        # 6. Process and validate AI response (for the new structure)
         ai_response_json_str = ai_response_raw.strip()
+        # Clean potential markdown code blocks
         if ai_response_json_str.startswith("```json"):
             ai_response_json_str = ai_response_json_str[7:]
         if ai_response_json_str.startswith("```"):
-            ai_response_json_str = ai_response_json_str[3:]
+             ai_response_json_str = ai_response_json_str[3:]
         if ai_response_json_str.endswith("```"):
             ai_response_json_str = ai_response_json_str[:-3]
         ai_response_json_str = ai_response_json_str.strip()
-        ai_response_json_str = ai_response_json_str.replace(': maybe', ': "maybe"') 
+        # Removed: ai_response_json_str = ai_response_json_str.replace(': maybe', ': "maybe"') 
 
         try:
             ai_response_data = json.loads(ai_response_json_str)
             if not isinstance(ai_response_data, dict):
                  raise ValueError("AI response is not a dict.")
-            validated_analysis: Dict[str, CategoryRequirementsResult] = {}
-            for key, value in ai_response_data.items():
-                validated_analysis[key] = CategoryRequirementsResult(**value) 
-            logger.info(f"[CatReq] Parsed/validated category AI response for {filename}")
+            
+            # Validate each item against the new CategoryExtractionResult model
+            validated_analysis: Dict[str, CategoryExtractionResult] = {}
+            for key, value_dict in ai_response_data.items():
+                # Ensure the value from AI is a dictionary before attempting validation
+                if not isinstance(value_dict, dict):
+                    logger.warning(f"[CatReq] Invalid item type for key '{key}' in AI response: {type(value_dict)}. Expected dict.")
+                    # Option 1: Skip this invalid item
+                    # continue 
+                    # Option 2: Create a default 'review_needed' entry
+                    validated_analysis[key] = CategoryExtractionResult(
+                        status='review_needed', 
+                        value=f"Invalid format received from AI: {value_dict}", 
+                        location=None
+                    )
+                    continue
+                    # Option 3: Fail the whole request (rely on outer try/except)
+                    # raise ValueError(f"Invalid item type for key '{key}': {type(value_dict)}")
+                
+                # Attempt to validate the dictionary using the Pydantic model
+                try:
+                    validated_analysis[key] = CategoryExtractionResult(**value_dict) 
+                except Exception as item_validation_error:
+                    logger.warning(f"[CatReq] Validation failed for item '{key}': {item_validation_error}. Raw item: {value_dict}")
+                    # Similar options as above for handling item-level validation failure
+                    validated_analysis[key] = CategoryExtractionResult(
+                        status='review_needed', 
+                        value=f"Validation failed for AI response item: {value_dict}. Error: {item_validation_error}", 
+                        location=None
+                    )
+            
+            logger.info(f"[CatReq] Parsed/validated category extraction AI response for {filename}")
+            # Return the fully validated response object
             return CategoryRequirementsResponse(category=category, analysis=validated_analysis)
+        except json.JSONDecodeError as json_e:
+             logger.error(f"[CatReq] Failed to decode JSON from category AI response: {json_e}. Raw: {ai_response_json_str}", exc_info=True)
+             raise HTTPException(status_code=502, detail=f"Category AI response was not valid JSON.")
         except Exception as e:
              logger.error(f"[CatReq] Failed parse/validate category AI response: {e}. Cleaned: {ai_response_json_str}", exc_info=True)
              raise HTTPException(status_code=502, detail=f"Category AI response failed validation: {e}")
