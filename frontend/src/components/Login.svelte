@@ -52,8 +52,8 @@
                           </g>
                       </g>
                       <g transform="matrix(0.567767,0,0,0.567767,2987.35,426.259)">
-                          <!-- Text part - not animating this currently -->
-                          <text x="157px" y="304px" style="font-family:'SourceSerifPro-Bold', 'Source Serif Pro', serif;font-weight:700;font-size:251.288px;fill:currentColor;">ac<tspan x="417.586px 544.738px 686.716px 799.293px 946.045px " y="304px 304px 304px 304px 304px ">corda</tspan></text>
+                          <!-- Added class logo-text-animate -->
+                          <text class="logo-text-animate" x="157px" y="304px" style="font-family:'SourceSerifPro-Bold', 'Source Serif Pro', serif;font-weight:700;font-size:251.288px;fill:currentColor;">ac<tspan x="417.586px 544.738px 686.716px 799.293px 946.045px " y="304px 304px 304px 304px 304px ">corda</tspan></text>
                       </g>
                   </g>
               </g>
@@ -154,6 +154,16 @@
         }
     }
 
+    /* Added keyframes for text fade-in */
+    @keyframes fade-in-text {
+        from {
+            opacity: 0;
+        }
+        to {
+            opacity: 1;
+        }
+    }
+
     .logo-path-animate {
         stroke: currentColor; 
         stroke-width: 8; 
@@ -167,5 +177,12 @@
         animation: 
             draw 3s linear forwards 0.5s,
             fill-in 0.5s ease-out forwards 2.0s; /* Decreased delay for fill fade */
+    }
+
+    /* Added styles for text animation */
+    .logo-text-animate {
+        opacity: 0; /* Start transparent */
+        fill: currentColor; /* Ensure fill color is set */
+        animation: fade-in-text 1.0s ease-in forwards 2.5s; /* Fade in after path fill finishes */
     }
 </style> 
