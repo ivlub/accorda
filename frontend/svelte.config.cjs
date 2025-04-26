@@ -1,4 +1,4 @@
-import preprocess from 'svelte-preprocess';
+const preprocess = require('svelte-preprocess');
 
 const config = {
   // Consult https://github.com/sveltejs/svelte-preprocess
@@ -8,4 +8,4 @@ const config = {
   }),
 };
 
-export default config; 
+module.exports = config; 
