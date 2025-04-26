@@ -1018,51 +1018,34 @@ async def analyze_diff_impact(
 
         # 6. Prepare AI Prompt using Jinja templates
         try:
-            # Load category definitions from file (remains the same)
+            # Load category definitions from file
             try:
                 categories_template = jinja_env.get_template("diff_impact_categories.jinja")
                 categories_definition_rendered = categories_template.render(perspective_filename=perspective_filename)
             except Exception as cat_e:
-                # ... error handling ...
+                logger.error(f"[ImpactAnalysis] Failed load/render category definition template: {cat_e}", exc_info=True)
                 raise HTTPException(status_code=500, detail="Internal server error: Failed to load category definitions.")
             
-            # Load and render the output example template, then modify it if needed or define it here
-            # For simplicity here, let's define the example string directly
-            output_format_example_rendered = """
-            Output Format Example (Respond ONLY with the JSON list, no other text):
-            [
-              {
-                "category": "Beneficial",
-                "affected_party": "Disclosing Party", 
-                "explanation": "Explanation of why this benefits the Disclosing Party.",
-                "change_summary": "Removed clause X, granting more rights to Disclosing Party."
-              },
-              {
-                "category": "Prejudicial",
-                "affected_party": "Receiving Party", 
-                "explanation": "Explanation of why this disadvantages the Receiving Party.",
-                "change_summary": "Added new reporting obligation for Receiving Party in section Y."
-              },
-              {
-                 "category": "Likely Neutral",
-                 "affected_party": "Both Parties", 
-                 "explanation": "Clarification affecting both parties equally.",
-                 "change_summary": "Corrected typo in definition Z."
-              }
-            ]
-            """
-            
+            # Load output example from file
+            try:
+                output_example_template = jinja_env.get_template("diff_impact_output_example.jinja")
+                # Pass perspective_filename if needed by the example template
+                output_format_example_rendered = output_example_template.render(perspective_filename=perspective_filename)
+            except Exception as ex_e:
+                 logger.error(f"[ImpactAnalysis] Failed load/render output example template: {ex_e}", exc_info=True)
+                 raise HTTPException(status_code=500, detail="Internal server error: Failed to load output format example.")
+
             # Load the main prompt template
             main_template = jinja_env.get_template("diff_impact_prompt.jinja") 
             
-            # Render the main prompt, passing the loaded/updated content
+            # Render the main prompt, passing the loaded content
             prompt = main_template.render(
                 perspective_filename=perspective_filename,
                 filename1=from_file_name, 
                 filename2=to_file_name,   
                 unified_diff=unified_diff_str,
-                categories_definition=categories_definition_rendered, 
-                output_format_example=output_format_example_rendered # Use updated example
+                categories_definition=categories_definition_rendered, # Use rendered content from file
+                output_format_example=output_format_example_rendered # Use rendered content from file
             )
             logger.info(f"[ImpactAnalysis] Generated impact analysis prompt for AI.")
             
