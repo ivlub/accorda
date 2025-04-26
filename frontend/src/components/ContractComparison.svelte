@@ -120,16 +120,35 @@
   .diff-container :global(.d2h-code-linenumber) {
     /* Hide the line number columns */
     display: none !important;
-    /* Original positioning rules removed/commented out
-    position: relative !important; 
-     left: auto !important; 
-     z-index: auto !important; 
-    */
   }
 
   /* Hide the @@ hunk header lines - trying more specific selector */
   .diff-container :global(table.d2h-diff-table > tbody.d2h-diff-tbody > tr > td.d2h-hunk-header) {
       display: none !important;
+  }
+
+  /* Set background of added/deleted TABLE CELLS to transparent */
+  .diff-container :global(td.d2h-ins),
+  .diff-container :global(td.d2h-del) {
+      background-color: transparent !important; /* Override default cell background */
+  }
+
+  /* Override default background and add border for deleted text segments */
+  .diff-container :global(del) {
+      background-color: transparent !important; /* Override default red fill */
+      border: 2px solid red !important;
+      border-radius: 3px;
+      padding: 0 2px;
+      text-decoration: none !important; /* Remove default strikethrough if present */
+  }
+
+  /* Override default background and add border for added text segments */
+  .diff-container :global(ins) {
+      background-color: transparent !important; /* Override default green fill */
+      border: 2px solid green !important;
+      border-radius: 3px;
+      padding: 0 2px;
+      text-decoration: none !important; /* Remove default underline if present */
   }
 
   /* Ensure the overall wrapper maintains layout */
