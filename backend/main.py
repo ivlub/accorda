@@ -8,6 +8,7 @@ import logging
 from pathlib import Path
 from typing import List
 from jinja2 import Environment, FileSystemLoader, select_autoescape
+import json
 
 # Import services
 from ai_service import generate_text_from_gemini
@@ -25,6 +26,7 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 # Define template directory
 TEMPLATE_DIR = Path("/app/templates") # Assuming templates are at /app/templates in container
+PROMPT_DIR = Path("/app/prompts") # Define prompt directory
 
 # Setup Jinja2 environment
 if TEMPLATE_DIR.is_dir():
@@ -349,4 +351,176 @@ async def summarize_contract(file: UploadFile = File(...)):
         if file:
             await file.close()
 
-# Note: Uvicorn reload is handled by the 'watchfiles' command in the Dockerfile CMD 
+# --- Helper function to load JSON ---
+def load_json_file(file_path: Path):
+    if not file_path.is_file():
+        logger.error(f"JSON file not found: {file_path}")
+        return None
+    try:
+        with file_path.open("r") as f:
+            return json.load(f)
+    except Exception as e:
+        logger.error(f"Error loading JSON file {file_path}: {e}", exc_info=True)
+        return None
+
+# --- Pydantic Models for Contract Requirements Check ---
+
+class RequirementCheckResult(BaseModel):
+    met: bool
+    explanation: str
+
+class CompletenessCheck(BaseModel):
+    date_of_contract_formation: RequirementCheckResult
+    parties_involved: RequirementCheckResult
+    object_of_contract: RequirementCheckResult
+    obligations_of_parties: RequirementCheckResult
+    date_of_conclusion: RequirementCheckResult | None = None # Optional based on description
+
+class PrecisionCheck(BaseModel):
+    terms_clearly_defined: RequirementCheckResult
+
+class FirmnessCheck(BaseModel):
+    reciprocal_obligations_established: RequirementCheckResult
+
+class FormalAdequacyCheck(BaseModel):
+    formal_requirements_met: RequirementCheckResult
+
+class ContractRequirementsResponse(BaseModel):
+    Completeness: CompletenessCheck
+    Precision: PrecisionCheck
+    Firmness: FirmnessCheck
+    FormalAdequacy: FormalAdequacyCheck
+
+
+# --- Contract Requirements Check Endpoint ---
+
+# Load schema and example at startup (or handle potential errors)
+REQUIREMENTS_SCHEMA_DATA = load_json_file(PROMPT_DIR / "requirements_schema.json")
+REQUIREMENTS_OUTPUT_EXAMPLE_DATA = load_json_file(PROMPT_DIR / "requirements_output_example.json")
+
+@app.post("/api/analyze/check-requirements", response_model=ContractRequirementsResponse)
+async def check_contract_requirements(file: UploadFile = File(...)):
+    """
+    Receives a contract file, extracts text, asks AI to check requirements 
+    based on a predefined schema, and returns the structured result.
+    """
+    if not jinja_env:
+         raise HTTPException(status_code=500, detail="Template engine not initialized. Check server logs.")
+    if REQUIREMENTS_SCHEMA_DATA is None or REQUIREMENTS_OUTPUT_EXAMPLE_DATA is None:
+         raise HTTPException(status_code=500, detail="Failed to load requirement definition files. Check server logs.")
+
+    filename = file.filename
+    if not filename:
+        raise HTTPException(status_code=400, detail="No filename provided.")
+        
+    file_extension = Path(filename).suffix.lower()
+    if file_extension not in [".pdf", ".docx"]:
+        raise HTTPException(status_code=415, detail=f"Unsupported file type: '{file_extension}'. Only .pdf and .docx supported.")
+
+    temp_file_path = UPLOAD_DIR / f"requirements_{filename}"
+    logger.info(f"[Requirements] Receiving file: {filename}. Saving temporarily to {temp_file_path}")
+
+    extracted_content = None
+    try:
+        # 1. Save file temporarily
+        with temp_file_path.open("wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+            logger.info(f"[Requirements] Successfully saved temporary file: {temp_file_path}")
+
+        # 2. Extract text
+        extracted_content = extract_text(str(temp_file_path))
+        if not extracted_content:
+            logger.error(f"[Requirements] Text extraction failed or yielded empty content for: {filename}")
+            raise HTTPException(status_code=500, detail="Failed to extract text from the file.")
+        logger.info(f"[Requirements] Successfully extracted text from {filename}. Length: {len(extracted_content)}")
+        
+        # Truncate long text if necessary
+        MAX_TEXT_LENGTH = 50000 # Use the same limit as categorization for consistency
+        if len(extracted_content) > MAX_TEXT_LENGTH:
+             logger.warning(f"[Requirements] Truncating text for {filename} from {len(extracted_content)} to {MAX_TEXT_LENGTH} characters.")
+             extracted_content = extracted_content[:MAX_TEXT_LENGTH] + "... [TRUNCATED]"
+
+        # 3. Prepare the prompt using Jinja template
+        try:
+            schema_str = json.dumps(REQUIREMENTS_SCHEMA_DATA, indent=2)
+            output_format_str = json.dumps(REQUIREMENTS_OUTPUT_EXAMPLE_DATA, indent=2)
+            
+            template = jinja_env.get_template("requirements_prompt.jinja")
+            prompt = template.render(
+                document_text=extracted_content, 
+                requirements_schema_str=schema_str,
+                output_format_example_str=output_format_str
+            )
+            logger.info(f"[Requirements] Generated prompt for {filename}")
+        except Exception as template_e:
+            logger.error(f"[Requirements] Failed to render Jinja template: {template_e}", exc_info=True)
+            raise HTTPException(status_code=500, detail="Internal server error: Failed to prepare analysis prompt.")
+
+
+        # 4. Call the AI service
+        logger.info(f"[Requirements] Sending request to AI for {filename}")
+        ai_response_raw = await generate_text_from_gemini(prompt) 
+        
+        if ai_response_raw.startswith("Error:"):
+            logger.error(f"[Requirements] AI service returned an error for {filename}: {ai_response_raw}")
+            raise HTTPException(status_code=502, detail=f"AI service failed: {ai_response_raw}")
+
+        # 5. Process and validate AI response
+        logger.info(f"[Requirements] Received raw response from AI for {filename}. Length: {len(ai_response_raw)}")
+        
+        # Attempt to clean the response (remove potential markdown/code blocks)
+        ai_response_json_str = ai_response_raw.strip()
+        if ai_response_json_str.startswith("```json"):
+            ai_response_json_str = ai_response_json_str[7:] # Remove ```json
+        if ai_response_json_str.startswith("```"): # Handle potential ``` start without language
+             ai_response_json_str = ai_response_json_str[3:]
+        if ai_response_json_str.endswith("```"):
+            ai_response_json_str = ai_response_json_str[:-3] # Remove ```
+        ai_response_json_str = ai_response_json_str.strip() # Strip again after potential removals
+
+        try:
+            ai_response_data = json.loads(ai_response_json_str)
+            # Validate the structure using the Pydantic model
+            validated_response = ContractRequirementsResponse(**ai_response_data)
+            logger.info(f"[Requirements] Successfully parsed and validated AI response for {filename}")
+            return validated_response
+        except json.JSONDecodeError:
+            logger.error(f"[Requirements] Failed to decode AI response JSON for {filename}. Cleaned Response: {ai_response_json_str}", exc_info=True) # Log the cleaned string
+            raise HTTPException(status_code=502, detail="AI service returned invalid JSON.")
+        except Exception as e: # Catch Pydantic validation errors or other issues
+             logger.error(f"[Requirements] Failed to validate AI response structure for {filename}. Error: {e}. Cleaned Response: {ai_response_json_str}", exc_info=True) # Log the cleaned string
+             raise HTTPException(status_code=502, detail=f"AI service response failed validation: {e}")
+
+    except HTTPException as http_exc:
+        # Re-raise HTTPExceptions (e.g., from file handling)
+        raise http_exc
+    except Exception as e:
+        logger.error(f"[Requirements] Error processing file {filename}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {e}")
+    finally:
+        # Ensure the temporary file is deleted
+        if temp_file_path.exists():
+            try:
+                temp_file_path.unlink()
+                logger.info(f"[Requirements] Successfully deleted temporary file: {temp_file_path}")
+            except Exception as del_e:
+                logger.error(f"[Requirements] Failed to delete temporary file {temp_file_path}: {del_e}")
+        # Close the uploaded file handle
+        await file.close()
+
+# --- Main execution ---
+if __name__ == "__main__":
+    # Determine host based on environment (e.g., Docker container vs local)
+    # Docker typically uses 0.0.0.0 to be accessible outside the container
+    host = os.getenv("HOST", "127.0.0.1") 
+    port = int(os.getenv("PORT", 8000))
+    
+    # Log the UPLOAD_DIR and TEMPLATE_DIR at startup
+    logger.info(f"FastAPI application starting up...")
+    logger.info(f"Upload directory set to: {UPLOAD_DIR.resolve()}")
+    if jinja_env:
+        logger.info(f"Template directory set to: {TEMPLATE_DIR.resolve()}")
+    else:
+        logger.warning(f"Template directory not found or not configured.")
+        
+    uvicorn.run(app, host=host, port=port) # Corrected: pass app object 

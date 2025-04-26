@@ -1,0 +1,50 @@
+{
+      "Completeness": {
+        "criteria": [
+          {
+            "id": "date_of_contract_formation",
+            "description": "Date of contract formation is included."
+          },
+          {
+            "id": "parties_involved",
+            "description": "The parties involved (beneficiaries) are clearly identified."
+          },
+          {
+            "id": "object_of_contract",
+            "description": "The object of the contract (e.g., mandate, payment, property) is specified."
+          },
+          {
+            "id": "obligations_of_parties",
+            "description": "The obligations of the parties (e.g., payment, transfer of ownership) are detailed."
+          },
+          {
+            "id": "date_of_conclusion",
+            "description": "The date of conclusion is included, where relevant."
+          }
+        ]
+      },
+      "Precision": {
+        "criteria": [
+          {
+            "id": "terms_clearly_defined",
+            "description": "Terms of the offer are clearly defined and final within the document."
+          }
+        ]
+      },
+      "Firmness": {
+        "criteria": [
+          {
+            "id": "reciprocal_obligations_established",
+            "description": "Reciprocal obligations (synallagmatic) demonstrating a serious and definitive intention to contract are established."
+          }
+        ]
+      },
+      "FormalAdequacy": {
+        "criteria": [
+          {
+            "id": "formal_requirements_met",
+            "description": "The offer complies with the form requirements appropriate to the type of contract being formed. Check national provisions governing the specific contract type for mandatory form requirements."
+          }
+        ]
+      }
+    } 
