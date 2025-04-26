@@ -19,16 +19,22 @@
     }
 </script>
 
-<div class="min-h-screen bg-gradient-to-br from-brand-dark to-neutral-darkest flex flex-col justify-center items-center py-12 px-4 sm:px-6 lg:px-8 font-serif">
+<div 
+    class="relative min-h-screen bg-brand-dark flex flex-col justify-center items-center py-12 px-4 sm:px-6 lg:px-8 font-serif bg-no-repeat bg-right-bottom bg-[length:75%]"
+    style="background-image: url('/world_global.svg');"
+>
     
-    <div class="w-full max-w-md"> 
-        <!-- Logo placed above the card -->
-        <img class="mx-auto h-20 w-auto mb-8" src="/logo.svg" alt="Accorda Logo">
+    <!-- Logo placed outside the card, top-left -->
+    <img class="absolute top-0 left-0 m-8 h-36 w-auto" src="/logo.svg" alt="Accorda Logo">
 
+    <div class="w-full max-w-md"> 
+        
         <div class="bg-white p-8 rounded-2xl shadow-xl space-y-6">
             
-            <div class="text-center">
-                <h2 class="text-3xl font-bold text-neutral-darkest">
+            <!-- Removed logo from here -->
+
+            <div class="text-center"> <!-- Restored original centering and padding removed -->
+                <h2 class="text-3xl font-bold text-neutral-darkest"> <!-- Restored original size -->
                     Welcome Back
                 </h2>
                 <p class="mt-2 text-sm text-neutral-dark">
