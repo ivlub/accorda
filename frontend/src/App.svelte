@@ -6,8 +6,9 @@
   import Sidebar from './components/Sidebar.svelte';
   import TopBar from './components/TopBar.svelte'; // Minimal top bar
   import ContractSummary from './components/ContractSummary.svelte'; // Import the new component
+  import HelpTutorial from './components/HelpTutorial.svelte'; // Import the new help component
 
-  type View = 'welcome' | 'analysis' | 'comparison' | 'summary'; // Add 'summary'
+  type View = 'welcome' | 'analysis' | 'comparison' | 'summary' | 'help'; // Add 'help' view
   let currentView: View = 'welcome';
 
   function navigate(view: View) {
@@ -40,6 +41,8 @@
              <div class="p-6 md:p-10"> <ContractComparison /> </div>
           {:else if currentView === 'summary'} 
              <div class="p-6 md:p-10"> <ContractSummary /> </div>
+          {:else if currentView === 'help'}
+             <div class="p-6 md:p-10"> <HelpTutorial /> </div>
           {/if}
         </div>
       {/key}

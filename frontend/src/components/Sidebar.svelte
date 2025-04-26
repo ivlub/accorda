@@ -1,8 +1,11 @@
 <script lang="ts">
-  import { Home, FileText, GitCompareArrows, Settings, Brain, ClipboardList } from 'lucide-svelte'; // Import Lucide icons and Brain icon + ClipboardList
+  import { Home, FileText, GitCompareArrows, Settings, Brain, ClipboardList, HelpCircle } from 'lucide-svelte'; // Import Lucide icons and Brain icon + ClipboardList + HelpCircle
 
-  export let currentView: 'welcome' | 'analysis' | 'comparison' | 'summary';
-  export let navigate: (view: 'welcome' | 'analysis' | 'comparison' | 'summary') => void;
+  // Define the view type directly or import from App.svelte if preferred
+  type View = 'welcome' | 'analysis' | 'comparison' | 'summary' | 'help';
+
+  export let currentView: View;
+  export let navigate: (view: View) => void;
 
   // Placeholder icons (consider a dedicated icon library like heroicons or lucide-svelte later)
   const icons = {
@@ -103,6 +106,23 @@
            >
              <svelte:component this={ClipboardList} class="mr-4 flex-shrink-0 h-6 w-6" strokeWidth={1.75} />
              Contract Summary
+           </button>
+
+           <!-- Help/Tutorial Link -->
+            <button 
+             on:click={() => navigate('help')} 
+             class="w-full flex items-center px-2 py-2 text-sm leading-6 font-medium rounded-md group transition ease-in-out duration-150"
+             class:text-neutral-white={currentView === 'help'}
+             class:bg-neutral-lightest={currentView === 'help'}
+             class:bg-opacity-10={currentView === 'help'} 
+             class:text-neutral-light={currentView !== 'help'}
+             class:hover:text-neutral-white={currentView !== 'help'}
+             class:hover:bg-neutral-lightest={currentView !== 'help'}
+             class:hover:bg-opacity-5={currentView !== 'help'}
+             aria-current={currentView === 'help' ? 'page' : undefined}
+           >
+             <svelte:component this={HelpCircle} class="mr-4 flex-shrink-0 h-6 w-6" strokeWidth={1.75} />
+             Help / Tutorial
            </button>
         </div>
         <!-- Could add other sections like Settings, Account etc. here -->

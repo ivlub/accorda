@@ -1,13 +1,17 @@
 <script lang="ts">
   import { Bell, HelpCircle, Settings } from 'lucide-svelte'; // Import Lucide icons
 
-  export let currentView: 'welcome' | 'analysis' | 'comparison' | 'summary';
+  // Define the view type directly or import from App.svelte if preferred
+  type View = 'welcome' | 'analysis' | 'comparison' | 'summary' | 'help';
+
+  export let currentView: View;
 
   const viewTitles = {
     welcome: 'Dashboard', // Or maybe hide title on welcome?
     analysis: 'Contract Analysis',
     comparison: 'Contract Comparison',
-    summary: 'Contract Summary'
+    summary: 'Contract Summary',
+    help: 'Help & Tutorial' // Add title for help view
   };
 
   $: title = viewTitles[currentView];
