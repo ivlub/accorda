@@ -1,12 +1,45 @@
 <script lang="ts">
   import { fade } from 'svelte/transition';
-  import { UploadCloud, Play, Loader2, AlertTriangle, FileText as FileIcon } from 'lucide-svelte';
+  import { UploadCloud, Play, Loader2, AlertTriangle, FileText as FileIcon, CheckCircle2, XCircle } from 'lucide-svelte';
+
+  // Define the structure of the expected response
+  interface RequirementCheckResult {
+    met: boolean;
+    explanation: string;
+  }
+
+  interface CompletenessCheck {
+    date_of_contract_formation: RequirementCheckResult;
+    parties_involved: RequirementCheckResult;
+    object_of_contract: RequirementCheckResult;
+    obligations_of_parties: RequirementCheckResult;
+    date_of_conclusion?: RequirementCheckResult | null; // Optional
+  }
+
+  interface PrecisionCheck {
+    terms_clearly_defined: RequirementCheckResult;
+  }
+
+  interface FirmnessCheck {
+    reciprocal_obligations_established: RequirementCheckResult;
+  }
+
+  interface FormalAdequacyCheck {
+    formal_requirements_met: RequirementCheckResult;
+  }
+
+  interface ContractRequirementsResponse {
+    Completeness: CompletenessCheck;
+    Precision: PrecisionCheck;
+    Firmness: FirmnessCheck;
+    FormalAdequacy: FormalAdequacyCheck;
+  }
 
   let selectedLawType: 'civil' | 'common' = 'common';
   let uploadedFile: File | null = null;
   let uploadedFileName: string | null = null;
-  let isUploading = false;
-  let analysisResult: string | null = null;
+  let isAnalyzing = false;
+  let requirementsResult: ContractRequirementsResponse | null = null;
   let errorMessage: string | null = null;
   // Define backend URL (adjust if necessary)
   const API_BASE_URL = 'http://localhost:8000'; 
@@ -17,7 +50,7 @@
           uploadedFile = target.files[0];
           uploadedFileName = uploadedFile.name;
           errorMessage = null;
-          analysisResult = null;
+          requirementsResult = null;
       } else {
           uploadedFile = null;
           uploadedFileName = null;
@@ -29,15 +62,15 @@
         errorMessage = "Please select a contract file."; return;
     }
     errorMessage = null;
-    isUploading = true;
-    analysisResult = null;
-    console.log(`Starting category analysis for ${uploadedFileName}...`);
+    isAnalyzing = true;
+    requirementsResult = null;
+    console.log(`Starting requirements check for ${uploadedFileName}...`);
 
     const formData = new FormData();
     formData.append('file', uploadedFile);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/analyze/categorize`, {
+      const response = await fetch(`${API_BASE_URL}/api/analyze/check-requirements`, {
           method: 'POST',
           body: formData,
       });
@@ -54,11 +87,11 @@
           throw new Error(errorDetail);
       }
 
-      const result = await response.json();
-      console.log("Analysis Result:", result);
+      const result: ContractRequirementsResponse = await response.json();
+      console.log("Requirements Analysis Result:", result);
 
-      // Display the category in the results area
-      analysisResult = `<h4 class="font-serif text-lg font-semibold mb-3 text-neutral-darkest">Contract Category Detected:</h4><p class="text-base text-brand-dark font-medium">${result.category}</p><p class="text-xs text-neutral-medium mt-2">File: ${result.filename}</p>`;
+      // Store the structured result
+      requirementsResult = result;
 
     } catch (error) {
         console.error("Analysis API call failed:", error);
@@ -69,8 +102,13 @@
             errorMessage = "An unexpected error occurred connecting to the analysis service.";
         }
     } finally {
-        isUploading = false;
+        isAnalyzing = false;
     }
+  }
+
+  // Helper to format criterion ID (e.g., date_of_contract_formation -> Date Of Contract Formation)
+  function formatCriterionKey(key: string): string {
+      return key.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
   }
 
 </script>
@@ -111,10 +149,10 @@
                          <span class="font-medium text-brand-muted">Browse files</span> or drag here
                     {/if}
                 </p>
-                <p class="text-xs text-neutral-medium mt-0.5">PDF, DOCX, TXT up to 50MB</p>
-                <input id="contract-upload" type="file" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" on:change={handleFileSelect} accept=".pdf,.docx,.txt"/>
+                <p class="text-xs text-neutral-medium mt-0.5">PDF, DOCX up to 50MB</p>
+                <input id="contract-upload" type="file" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" on:change={handleFileSelect} accept=".pdf,.docx"/>
             </label>
-            {#if errorMessage && !isUploading}
+            {#if errorMessage && !isAnalyzing}
                 <p class="text-sm text-red-600 mt-3 px-1">{errorMessage}</p>
             {/if}
         </div>
@@ -124,15 +162,15 @@
       <div in:fade={{ duration: 300, delay: 300 }}>
         <button
               on:click={startAnalysis}
-              disabled={!uploadedFile || isUploading}
+              disabled={!uploadedFile || isAnalyzing}
               class="w-full px-4 py-2.5 bg-brand-dark text-white rounded-md font-semibold text-sm hover:bg-neutral-darkest focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-dark disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-neutral-medium transition duration-150 ease-in-out flex items-center justify-center space-x-2 shadow-sm"
           >
-              {#if isUploading}
+              {#if isAnalyzing}
                   <svelte:component this={Loader2} class="animate-spin h-4 w-4 text-white" />
                   <span>Analyzing...</span>
               {:else}
                   <svelte:component this={Play} class="w-5 h-5" fill="currentColor" />
-                  <span>Start Analysis</span>
+                  <span>Check Requirements</span>
               {/if}
           </button>
       </div>
@@ -141,31 +179,57 @@
     <!-- Right Column: Results -->
     <div class="lg:col-span-8">
         <section aria-labelledby="results-heading">
-            <h2 id="results-heading" class="sr-only">Analysis Results</h2> <!-- Screen reader only heading -->
+            <h2 id="results-heading" class="text-lg font-semibold text-neutral-darkest mb-4 font-serif">Contract Requirements Analysis</h2>
             <div class="bg-neutral-white p-6 rounded-md border border-neutral-light min-h-[400px] lg:min-h-[calc(100vh-12rem)] flex flex-col">
-                 <div class="flex-grow flex items-center justify-center">
-                    {#key analysisResult || isUploading || errorMessage}
-                        <div class="w-full h-full flex items-center justify-center text-center" in:fade={{ duration: 300 }} out:fade={{ duration: 150 }}>
-                            {#if isUploading}
-                                <div class="text-neutral-dark">
-                                    <svelte:component this={Loader2} class="animate-spin h-6 w-6 text-brand-muted mx-auto mb-2" />
-                                    Processing Document...
+                 <div class="flex-grow">
+                    {#key requirementsResult || isAnalyzing || errorMessage}
+                        <div class="w-full h-full" in:fade={{ duration: 300 }} out:fade={{ duration: 150 }}>
+                            {#if isAnalyzing}
+                                <div class="text-neutral-dark flex items-center justify-center h-full text-center">
+                                    <div>
+                                        <svelte:component this={Loader2} class="animate-spin h-6 w-6 text-brand-muted mx-auto mb-2" />
+                                        Processing Document...
+                                     </div>
                                 </div>
-                            {:else if analysisResult}
-                                <!-- Results Area - using prose for potential markdown/rich text -->
-                                <div class="prose prose-sm max-w-none text-neutral-darkest text-left w-full h-full overflow-auto p-1 prose-headings:font-serif prose-headings:font-semibold prose-headings:text-brand-dark">
-                                    {@html analysisResult}
+                            {:else if requirementsResult}
+                                <!-- Display Structured Requirements -->
+                                <div class="space-y-6 text-sm">
+                                    {#each Object.entries(requirementsResult) as [category, criteria]} 
+                                        <div class="border border-neutral-light rounded-md overflow-hidden">
+                                            <h3 class="bg-neutral-lightest text-neutral-darkest px-4 py-2 font-semibold font-serif text-base">{category}</h3>
+                                            <ul class="divide-y divide-neutral-light">
+                                                {#each Object.entries(criteria) as [key, result]} 
+                                                    {#if result && typeof result === 'object' && 'met' in result && 'explanation' in result}
+                                                     <li class="flex items-start p-4 space-x-3">
+                                                        <svelte:component 
+                                                            this={result.met ? CheckCircle2 : XCircle} 
+                                                            class={`w-5 h-5 mt-0.5 flex-shrink-0 ${result.met ? 'text-green-600' : 'text-red-600'}`}
+                                                            strokeWidth={2}
+                                                        />
+                                                        <div class="flex-grow">
+                                                             <p class="font-medium text-neutral-darkest">{formatCriterionKey(key)}</p>
+                                                             <p class="text-neutral-dark mt-1">{result.explanation}</p>
+                                                        </div>
+                                                    </li>
+                                                    {/if}
+                                                {/each}
+                                            </ul>
+                                        </div>
+                                    {/each}
                                 </div>
-                            {:else if errorMessage && !uploadedFile}
-                                <div class="text-red-600 px-4">
-                                    <svelte:component this={AlertTriangle} class="h-8 w-8 mx-auto mb-1" strokeWidth={1.5} />
-                                    {errorMessage}
+                            {:else if errorMessage}
+                                <div class="text-red-600 px-4 flex items-center justify-center h-full text-center">
+                                    <div>
+                                        <svelte:component this={AlertTriangle} class="h-8 w-8 mx-auto mb-1" strokeWidth={1.5} />
+                                        <p><strong>Analysis Failed:</strong> {errorMessage}</p>
+                                    </div>
                                 </div>
                             {:else}
-                                <div class="text-neutral-medium px-4">
-                                     <!-- Icon: document text -->
-                                    <svelte:component this={FileIcon} class="w-12 h-12 mx-auto mb-2 text-neutral-light" strokeWidth={1.5} />
-                                    Analysis results will be displayed here.
+                                <div class="text-neutral-medium px-4 flex items-center justify-center h-full text-center">
+                                     <div>
+                                        <svelte:component this={FileIcon} class="w-12 h-12 mx-auto mb-2 text-neutral-light" strokeWidth={1.5} />
+                                        Upload a document and click "Check Requirements" to see the analysis.
+                                    </div>
                                 </div>
                             {/if}
                         </div>
