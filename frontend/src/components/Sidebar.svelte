@@ -15,7 +15,7 @@
   }
 
   const userName = "Sara Mendes"; // Placeholder
-  const userEmail = "sara.mendes@accorda.ai"; // Placeholder
+  const userEmail = "sara.mendes@accorda.legal"; // Placeholder
 
 </script>
 

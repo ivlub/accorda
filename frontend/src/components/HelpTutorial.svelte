@@ -1,5 +1,4 @@
 <script lang="ts">
-  // Placeholder for Help/Tutorial content
 </script>
 
 <div class="prose prose-lg max-w-none px-4 py-8 sm:px-6 lg:px-8">
@@ -54,7 +53,7 @@
    <section>
       <h2 class="text-xl font-semibold font-serif mb-4 border-b pb-2">Need More Help?</h2>
       <p>
-        If you encounter any issues, have suggestions, or require further assistance, please don't hesitate to contact our support team at <a href="mailto:support@accorda.ai" class="text-brand-accent hover:underline">support@accorda.ai</a>.
+        If you encounter any issues, have suggestions, or require further assistance, please don't hesitate to contact our support team at <a href="mailto:support@accorda.legal" class="text-brand-accent hover:underline">support@accorda.legal</a>.
       </p>
    </section>
 </div>
