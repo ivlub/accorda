@@ -130,6 +130,11 @@
       return key.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
   }
 
+  // Helper to format category name (e.g., FormalAdequacy -> Formal Adequacy)
+  function formatCategoryName(name: string): string {
+      return name.replace(/([A-Z])/g, ' $1').trim(); // Add space before capital letters
+  }
+
 </script>
 
 <!-- Main component structure -->
@@ -268,7 +273,7 @@
                                 <details class="border border-neutral-light rounded-md group" open>
                                     <summary class="list-none flex items-center justify-between bg-neutral-lightest px-4 py-3 cursor-pointer hover:bg-neutral-lighter transition duration-150 ease-in-out rounded-t-md">
                                         <div class="flex items-center space-x-2 flex-wrap gap-y-1">
-                                            <span class="font-semibold font-serif text-base text-neutral-darkest">{category}</span>
+                                            <span class="font-semibold font-serif text-base text-neutral-darkest">{formatCategoryName(category)}</span>
                                              <!-- Status Badges -->
                                              {#if isAllGood}
                                                  <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
@@ -301,8 +306,11 @@
                                                         <svelte:component this={HelpCircle} class="w-5 h-5 mt-0.5 flex-shrink-0 text-yellow-600" strokeWidth={2}/>
                                                     {/if}
                                                     <div class="flex-grow">
-                                                        <p class="font-medium text-neutral-darkest">{formatCriterionKey(key)}</p>
-                                                        <p class="text-neutral-dark mt-1">{result.explanation}</p>
+                                                        <!-- Hide subtitle for FormalAdequacy -->
+                                                        {#if category !== 'FormalAdequacy'}
+                                                            <p class="font-medium text-neutral-darkest">{formatCriterionKey(key)}</p>
+                                                        {/if}
+                                                        <p class="text-neutral-dark mt-1 {category === 'FormalAdequacy' ? '' : 'mt-1'}">{result.explanation}</p>
                                                     </div>
                                                 </li>
                                             {/if}
