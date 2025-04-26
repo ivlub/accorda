@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { fade } from 'svelte/transition';
-  import { UploadCloud, Scale, Loader2, AlertTriangle, FileUp, FileDiff, Download, BrainCircuit } from 'lucide-svelte';
+  import { UploadCloud, Scale, Loader2, AlertTriangle, FileUp, FileDiff, Download, BrainCircuit, ChevronDown, ChevronUp, FileText } from 'lucide-svelte';
   import * as Diff from 'diff';
   import * as Diff2Html from 'diff2html';
   import 'diff2html/bundles/css/diff2html.min.css';
@@ -22,6 +22,9 @@
   let isAnalyzingImpact = false;
   let impactAnalysisResult: Array<{category: string; explanation: string; change_summary: string}> | null = null;
   let impactAnalysisErrorMessage: string | null = null;
+
+  let isExplanationOpen = true;
+  let isImpactAnalysisOpen = true;
 
   function handleFileSelect(event: Event, fileNumber: 1 | 2) {
       const target = event.target as HTMLInputElement;
@@ -545,6 +548,26 @@
        color: #4b5563; /* neutral-dark */
        border-left: 3px solid #d1d5db; /* neutral-medium */
    }
+
+   .collapsible-header {
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+       cursor: pointer;
+       user-select: none; /* Prevent text selection on click */
+       padding-bottom: 0.75rem; /* mb-3 equivalent */
+       border-bottom: 1px solid transparent; /* Add border space */
+       margin-bottom: -1px; /* Counteract border space when closed */
+   }
+   .collapsible-header:hover .header-title {
+       /* Optional: Add hover effect to title */
+       color: #5E4EE6; /* brand-dark equivalent */
+   }
+   .section-content {
+        padding-top: 1rem; /* Add padding when open */
+        border-top: 1px solid #e5e7eb; /* Separator line when open */
+        margin-top: -1px; /* Overlap with header border */
+    }
 </style>
 
 <div class="max-w-7xl mx-auto">
@@ -638,106 +661,124 @@
       <!-- Explanation Section -->
       {#if comparisonResult || isExplaining || explanationErrorMessage}
         <div class="mt-8 bg-neutral-white p-6 rounded-md border border-neutral-light">
-          <h3 class="text-base font-semibold text-brand-dark mb-3">AI Explanation of Changes</h3>
-           {#key diffExplanation || isExplaining || explanationErrorMessage}
-              <div class="text-sm text-neutral-darkest space-y-2" in:fade={{ duration: 300 }} out:fade={{ duration: 150 }}>
-                  {#if isExplaining}
-                      <div class="flex items-center text-neutral-dark">
-                          <svelte:component this={Loader2} class="animate-spin h-4 w-4 mr-2 text-brand-muted" />
-                          Generating explanation...
-                      </div>
-                  {:else if diffExplanation}
-                      <div class="whitespace-pre-wrap">{@html diffExplanation}</div>
-                  {:else if explanationErrorMessage}
-                      <div class="text-red-600 flex items-start">
-                          <svelte:component this={AlertTriangle} class="h-5 w-5 mr-1.5 mt-0.5 flex-shrink-0" strokeWidth={1.5} />
-                          {explanationErrorMessage}
-                      </div>
-                  {:else if comparisonResult && !isExplaining && !diffExplanation && !explanationErrorMessage}
-                       <p class="text-neutral-medium italic">Explanation will appear here.</p>
-                  {/if}
-              </div>
-           {/key}
+          <div class="collapsible-header" on:click={() => isExplanationOpen = !isExplanationOpen} role="button" tabindex="0" 
+               aria-expanded={isExplanationOpen} aria-controls="explanation-content">
+            <h3 class="text-base font-semibold text-brand-dark flex items-center header-title">
+                <svelte:component this={FileText} class="w-5 h-5 mr-2 text-brand-dark" strokeWidth={1.75}/>
+                AI Explanation of Changes
+            </h3>
+            <svelte:component this={isExplanationOpen ? ChevronUp : ChevronDown} class="w-5 h-5 text-neutral-medium"/>
+          </div>
+
+          {#if isExplanationOpen}
+            <div class="section-content" id="explanation-content">
+              {#key diffExplanation || isExplaining || explanationErrorMessage}
+                  <div class="text-sm text-neutral-darkest space-y-2" 
+                       in:fade={{ duration: 200 }} 
+                       out:fade={{ duration: 150 }}>
+                      {#if isExplaining}
+                          <div class="flex items-center text-neutral-dark">
+                              <svelte:component this={Loader2} class="animate-spin h-4 w-4 mr-2 text-brand-muted" />
+                              Generating explanation...
+                          </div>
+                      {:else if diffExplanation}
+                          <div class="whitespace-pre-wrap">{@html diffExplanation}</div>
+                      {:else if explanationErrorMessage}
+                           <div class="text-red-600 flex items-start">
+                               <svelte:component this={AlertTriangle} class="h-5 w-5 mr-1.5 mt-0.5 flex-shrink-0" strokeWidth={1.5} />
+                               {explanationErrorMessage}
+                           </div>
+                      {:else if comparisonResult && !isExplaining && !diffExplanation && !explanationErrorMessage}
+                           <p class="text-neutral-medium italic">Explanation will appear here.</p>
+                      {/if}
+                  </div>
+              {/key}
+            </div>
+          {/if}
         </div>
       {/if}
 
       <!-- Diff Impact Analysis Section -->
       {#if diffExplanation && !explanationErrorMessage && uploadedFile1Name && uploadedFile2Name} 
         <div class="mt-8 bg-neutral-white p-6 rounded-md border border-neutral-light">
-          <h3 class="text-base font-semibold text-brand-dark mb-4 flex items-center">
-            <svelte:component this={BrainCircuit} class="w-5 h-5 mr-2 text-brand-dark" strokeWidth={1.75}/>
-            AI Impact Analysis of Changes
-          </h3>
+          <div class="collapsible-header" on:click={() => isImpactAnalysisOpen = !isImpactAnalysisOpen} role="button" tabindex="0" 
+               aria-expanded={isImpactAnalysisOpen} aria-controls="impact-analysis-content">
+             <h3 class="text-base font-semibold text-brand-dark flex items-center header-title">
+               <svelte:component this={BrainCircuit} class="w-5 h-5 mr-2 text-brand-dark" strokeWidth={1.75}/>
+               AI Impact Analysis of Changes
+             </h3>
+              <svelte:component this={isImpactAnalysisOpen ? ChevronUp : ChevronDown} class="w-5 h-5 text-neutral-medium"/>
+           </div>
 
-          <!-- Perspective Selection -->
-          <div class="mb-5">
-              <label class="block text-sm font-medium text-neutral-dark mb-2">Analyze impact from the perspective of:</label>
-              <div>
-                  <input type="radio" id="perspective-file1" name="perspective" value="file1" bind:group={selectedPerspective} 
-                         on:change={getDiffImpactAnalysis} 
-                         disabled={isAnalyzingImpact || !uploadedFile1Name}
-                         class="sr-only perspective-radio-input">
-                  <label for="perspective-file1" class="perspective-radio-label" title={uploadedFile1Name}>
-                      File 1: <span class="ml-1 font-normal truncate max-w-[150px] inline-block">{uploadedFile1Name}</span>
-                  </label>
-
-                  <input type="radio" id="perspective-file2" name="perspective" value="file2" bind:group={selectedPerspective} 
-                         on:change={getDiffImpactAnalysis}
-                         disabled={isAnalyzingImpact || !uploadedFile2Name}
-                         class="sr-only perspective-radio-input">
-                  <label for="perspective-file2" class="perspective-radio-label" title={uploadedFile2Name}>
-                      File 2: <span class="ml-1 font-normal truncate max-w-[150px] inline-block">{uploadedFile2Name}</span>
-                  </label>
+          {#if isImpactAnalysisOpen}
+            <div class="section-content" id="impact-analysis-content">
+              <div class="mb-5 pt-1">
+                  <label class="block text-sm font-medium text-neutral-dark mb-2">Analyze impact from the perspective of:</label>
+                  <div>
+                     <input type="radio" id="perspective-file1" name="perspective" value="file1" bind:group={selectedPerspective} 
+                             on:change={getDiffImpactAnalysis} 
+                             disabled={isAnalyzingImpact || !uploadedFile1Name}
+                             class="sr-only perspective-radio-input">
+                      <label for="perspective-file1" class="perspective-radio-label" title={uploadedFile1Name}>
+                          File 1: <span class="ml-1 font-normal truncate max-w-[150px] inline-block">{uploadedFile1Name}</span>
+                      </label>
+                      <input type="radio" id="perspective-file2" name="perspective" value="file2" bind:group={selectedPerspective} 
+                             on:change={getDiffImpactAnalysis}
+                             disabled={isAnalyzingImpact || !uploadedFile2Name}
+                             class="sr-only perspective-radio-input">
+                      <label for="perspective-file2" class="perspective-radio-label" title={uploadedFile2Name}>
+                          File 2: <span class="ml-1 font-normal truncate max-w-[150px] inline-block">{uploadedFile2Name}</span>
+                      </label>
+                  </div>
               </div>
-          </div>
 
-          <!-- Analysis Results -->
-          {#key impactAnalysisResult || isAnalyzingImpact || impactAnalysisErrorMessage || selectedPerspective}
-            <div class="text-sm text-neutral-darkest space-y-3" in:fade={{ duration: 300 }} out:fade={{ duration: 150 }}>
-                {#if isAnalyzingImpact}
-                    <div class="flex items-center text-neutral-dark py-4">
-                        <svelte:component this={Loader2} class="animate-spin h-4 w-4 mr-2 text-brand-muted" />
-                        Analyzing impact... (This may take a moment)
-                    </div>
-                {:else if impactAnalysisResult && impactAnalysisResult.length > 0}
-                    {#each impactAnalysisResult as item}
-                        <div class="impact-item">
-                           <div class="impact-item-header">
-                               <span class="impact-category-badge impact-category-{item.category.replace(' ', '')}">{item.category}</span>
-                               {#if selectedPerspective === 'file1'}
-                                   <span class="text-xs text-neutral-medium">(Impact to {uploadedFile1Name})</span>
-                               {:else if selectedPerspective === 'file2'}
-                                    <span class="text-xs text-neutral-medium">(Impact to {uploadedFile2Name})</span>
-                               {/if}
-                           </div>
-                            <p class="whitespace-pre-wrap">{item.explanation}</p>
-                            
-                            <!-- <<< UPDATED: Display change_summary instead of diff_snippet >>> -->
-                            {#if item.change_summary}
-                                <div class="change-summary">
-                                     <p><strong>Change Summary:</strong> {item.change_summary}</p>
-                                </div>
-                            {/if}
-                            <!-- <<< END: Update >>> -->
-
+              {#key impactAnalysisResult || isAnalyzingImpact || impactAnalysisErrorMessage || selectedPerspective}
+                <div class="text-sm text-neutral-darkest space-y-3" 
+                     in:fade={{ duration: 200, delay: 50 }} 
+                     out:fade={{ duration: 150 }}>
+                    {#if isAnalyzingImpact}
+                        <div class="flex items-center text-neutral-dark py-4">
+                            <svelte:component this={Loader2} class="animate-spin h-4 w-4 mr-2 text-brand-muted" />
+                            Analyzing impact... (This may take a moment)
                         </div>
-                    {/each}
-                 {:else if impactAnalysisResult && impactAnalysisResult.length === 0 && !impactAnalysisErrorMessage}
-                     {#if selectedPerspective}  
-                        <p class="text-neutral-medium italic py-4">No specific impacts requiring categorization were identified for {selectedPerspective === 'file1' ? uploadedFile1Name : uploadedFile2Name}.</p>
+                    {:else if impactAnalysisResult && impactAnalysisResult.length > 0}
+                        {#each impactAnalysisResult as item}
+                            <div class="impact-item">
+                               <div class="impact-item-header">
+                                   <span class="impact-category-badge impact-category-{item.category.replace(' ', '')}">{item.category}</span>
+                                   {#if selectedPerspective === 'file1'}
+                                       <span class="text-xs text-neutral-medium">(Impact to {uploadedFile1Name})</span>
+                                   {:else if selectedPerspective === 'file2'}
+                                        <span class="text-xs text-neutral-medium">(Impact to {uploadedFile2Name})</span>
+                                   {/if}
+                               </div>
+                                <p class="whitespace-pre-wrap">{item.explanation}</p>
+                                
+                                {#if item.change_summary}
+                                    <div class="change-summary">
+                                         <p><strong>Change Summary:</strong> {item.change_summary}</p>
+                                    </div>
+                                {/if}
+                            </div>
+                        {/each}
+                     {:else if impactAnalysisResult && impactAnalysisResult.length === 0 && !impactAnalysisErrorMessage}
+                         {#if selectedPerspective}  
+                            <p class="text-neutral-medium italic py-4">No specific impacts requiring categorization were identified for {selectedPerspective === 'file1' ? uploadedFile1Name : uploadedFile2Name}.</p>
+                         {/if}
+                    {:else if impactAnalysisErrorMessage}
+                        <div class="text-red-600 flex items-start py-4">
+                            <svelte:component this={AlertTriangle} class="h-5 w-5 mr-1.5 mt-0.5 flex-shrink-0" strokeWidth={1.5} />
+                            {impactAnalysisErrorMessage}
+                        </div>
+                    {:else if selectedPerspective && !isAnalyzingImpact && !impactAnalysisResult && !impactAnalysisErrorMessage}
+                         <p class="text-neutral-medium italic py-4">Analysis results will appear here.</p>
+                     {:else if !selectedPerspective}
+                          <p class="text-neutral-medium italic py-4">Select a perspective above to analyze the impact of the changes.</p>
                      {/if}
-                {:else if impactAnalysisErrorMessage}
-                    <div class="text-red-600 flex items-start py-4">
-                        <svelte:component this={AlertTriangle} class="h-5 w-5 mr-1.5 mt-0.5 flex-shrink-0" strokeWidth={1.5} />
-                        {impactAnalysisErrorMessage}
-                    </div>
-                {:else if selectedPerspective && !isAnalyzingImpact && !impactAnalysisResult && !impactAnalysisErrorMessage}
-                    <p class="text-neutral-medium italic py-4">Analysis results will appear here.</p>
-                 {:else if !selectedPerspective}
-                      <p class="text-neutral-medium italic py-4">Select a perspective above to analyze the impact of the changes.</p>
-                {/if}
+                </div>
+              {/key}
             </div>
-          {/key}
+           {/if}
         </div>
       {/if} 
 
