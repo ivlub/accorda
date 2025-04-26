@@ -8,6 +8,8 @@
   let isUploading = false;
   let analysisResult: string | null = null;
   let errorMessage: string | null = null;
+  // Define backend URL (adjust if necessary)
+  const API_BASE_URL = 'http://localhost:8000'; 
 
   function handleFileSelect(event: Event) {
       const target = event.target as HTMLInputElement;
@@ -29,10 +31,46 @@
     errorMessage = null;
     isUploading = true;
     analysisResult = null;
-    console.log(`Starting analysis for ${uploadedFileName} with ${selectedLawType} law type...`);
-    await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate API call
-    analysisResult = `<h4 class="font-serif text-lg font-semibold mb-3 text-neutral-darkest">Analysis Summary: ${uploadedFileName}</h4><p class="text-sm mb-2">Law Type: <span class="font-medium">${selectedLawType === 'common' ? 'Common Law' : 'Civil Law'}</span></p><p class="text-sm mb-2">Key Findings:</p><ul class="list-disc pl-5 text-sm space-y-1"><li>Identified potential risk in termination clause (Section 8.2).</li><li>Payment terms (Section 4) appear standard.</li><li>Liability limitations (Section 11) require review based on jurisdiction.</li></ul><p class="text-sm mt-3">Overall Risk Assessment: <span class="font-semibold text-orange-700">Medium</span></p>`; // Example Rich Text
-    isUploading = false;
+    console.log(`Starting category analysis for ${uploadedFileName}...`);
+
+    const formData = new FormData();
+    formData.append('file', uploadedFile);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/analyze/categorize`, {
+          method: 'POST',
+          body: formData,
+      });
+
+      if (!response.ok) {
+          let errorDetail = "An unknown error occurred during analysis.";
+          try {
+              // Try to parse the error message from the backend
+              const errorJson = await response.json();
+              errorDetail = errorJson.detail || `Server responded with status ${response.status}`;
+          } catch (parseError) {
+              errorDetail = `Server responded with status ${response.status}. Could not parse error details.`;
+          }
+          throw new Error(errorDetail);
+      }
+
+      const result = await response.json();
+      console.log("Analysis Result:", result);
+
+      // Display the category in the results area
+      analysisResult = `<h4 class="font-serif text-lg font-semibold mb-3 text-neutral-darkest">Contract Category Detected:</h4><p class="text-base text-brand-dark font-medium">${result.category}</p><p class="text-xs text-neutral-medium mt-2">File: ${result.filename}</p>`;
+
+    } catch (error) {
+        console.error("Analysis API call failed:", error);
+        // Check if error is an instance of Error to access message property
+        if (error instanceof Error) {
+            errorMessage = error.message;
+        } else {
+            errorMessage = "An unexpected error occurred connecting to the analysis service.";
+        }
+    } finally {
+        isUploading = false;
+    }
   }
 
 </script>

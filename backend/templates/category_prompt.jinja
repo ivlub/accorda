@@ -1,0 +1,13 @@
+Based on the following document text, please select the single most appropriate contract category from the provided list. Only use the categories from this list. 
+
+Categories:
+{% for category in categories %}
+- {{ category }}
+{% endfor %}
+
+Document Text:
+```
+{{ document_text }}
+```
+
+Selected Category: 

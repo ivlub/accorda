@@ -6,12 +6,14 @@ import os
 import shutil
 import logging
 from pathlib import Path
+from typing import List
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 # Import services
 from ai_service import generate_text_from_gemini
-from text_extractor import extract_text # Import the new extractor
+from text_extractor import extract_text
 
-# Configure logging (ensure it's configured)
+# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -19,12 +21,55 @@ app = FastAPI()
 
 # Define upload directory within the container
 UPLOAD_DIR = Path("/app/uploads")
-UPLOAD_DIR.mkdir(parents=True, exist_ok=True) # Create directory if it doesn't exist
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+# Define template directory
+TEMPLATE_DIR = Path("/app/templates") # Assuming templates are at /app/templates in container
+
+# Setup Jinja2 environment
+if TEMPLATE_DIR.is_dir():
+    jinja_env = Environment(
+        loader=FileSystemLoader(str(TEMPLATE_DIR)),
+        autoescape=select_autoescape(['html', 'xml', 'jinja'])
+    )
+    logger.info(f"Jinja2 environment loaded from {TEMPLATE_DIR}")
+else:
+    jinja_env = None
+    logger.error(f"Jinja2 template directory not found: {TEMPLATE_DIR}. Categorization endpoint may fail.")
+
+# Define contract categories
+# TODO: Consider moving this to a config file or database
+CONTRACT_CATEGORIES = [
+    "Sale and purchase",
+    "Service provision",
+    "Mandate",
+    "Deposit",
+    "Contract work",
+    "Transport",
+    "For use of a tangible good",
+    "Money for money: Loan",
+    "For use of an intangible good",
+    "License agreement",
+    "For access",
+    "Donation",
+    "Commodatum",
+    "Association contract",
+    "Cooperative contract",
+    "Company contract",
+    "Distribution/Franchise contract",
+    "Guarantee contracts",
+    "Gambling contract",
+    "Contract in favor of a third party",
+    "Contract by person to be named",
+    "Contract of assignment of contractual position: Promise to contract",
+    "Non-Disclosure Agreement",
+    "Intellectual Property Agreement",
+]
 
 # Allow CORS for frontend development
 origins = [
     "http://localhost",
-    "http://localhost:5173", # Default Svelte/Vite dev port
+    "http://localhost:5173",
     "http://127.0.0.1:5173",
 ]
 
@@ -131,5 +176,95 @@ async def handle_text_extraction(file: UploadFile = File(...) ):
                 logger.error(f"Failed to delete temporary file {temp_file_path}: {del_e}")
         # Close the uploaded file handle
         await file.close()
+
+
+@app.post("/api/analyze/categorize")
+async def categorize_contract(file: UploadFile = File(...)):
+    """Receives a contract file, extracts text, asks AI to categorize it, and returns the category."""
+    
+    if not jinja_env:
+         raise HTTPException(status_code=500, detail="Template engine not initialized. Check server logs.")
+
+    filename = file.filename
+    if not filename:
+        raise HTTPException(status_code=400, detail="No filename provided.")
+        
+    # Check supported file types (matching text_extractor capabilities)
+    file_extension = Path(filename).suffix.lower()
+    if file_extension not in [".pdf", ".docx"]:
+        raise HTTPException(status_code=415, detail=f"Unsupported file type: '{file_extension}'. Only .pdf and .docx supported for categorization.")
+
+    temp_file_path = UPLOAD_DIR / f"categorize_{filename}" # Use prefix to avoid potential clashes
+    logger.info(f"[Categorize] Receiving file: {filename}. Saving temporarily to {temp_file_path}")
+
+    extracted_content = None
+    try:
+        # 1. Save file temporarily
+        with temp_file_path.open("wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+            logger.info(f"[Categorize] Successfully saved temporary file: {temp_file_path}")
+
+        # 2. Extract text
+        extracted_content = extract_text(str(temp_file_path))
+        if not extracted_content:
+            logger.error(f"[Categorize] Text extraction failed or yielded empty content for: {filename}")
+            raise HTTPException(status_code=500, detail="Failed to extract text from the file. It might be corrupted, empty, or password-protected.")
+        logger.info(f"[Categorize] Successfully extracted text from {filename}. Length: {len(extracted_content)}")
+        
+        # Truncate very long text to avoid exceeding AI model limits 
+        MAX_TEXT_LENGTH = 50000 # Example limit, adjust based on model and needs. TODO: evaluete what this sould be 
+        if len(extracted_content) > MAX_TEXT_LENGTH:
+             logger.warning(f"[Categorize] Truncating text for {filename} from {len(extracted_content)} to {MAX_TEXT_LENGTH} characters.")
+             extracted_content = extracted_content[:MAX_TEXT_LENGTH] + "... [TRUNCATED]"
+
+        # 3. Prepare the prompt using Jinja template
+        try:
+            template = jinja_env.get_template("category_prompt.jinja")
+            prompt = template.render(document_text=extracted_content, categories=CONTRACT_CATEGORIES)
+            logger.info(f"[Categorize] Generated prompt for {filename}")
+        except Exception as template_e:
+            logger.error(f"[Categorize] Failed to render Jinja template: {template_e}", exc_info=True)
+            raise HTTPException(status_code=500, detail="Internal server error: Failed to prepare analysis prompt.")
+
+        # 4. Call the AI service
+        logger.info(f"[Categorize] Sending request to AI for {filename}")
+        ai_response_raw = await generate_text_from_gemini(prompt)
+        
+        if ai_response_raw.startswith("Error:"):
+            logger.error(f"[Categorize] AI service returned an error for {filename}: {ai_response_raw}")
+            raise HTTPException(status_code=502, detail=f"AI service failed: {ai_response_raw}")
+        
+        # 5. Process AI response (basic validation)
+        suggested_category = ai_response_raw.strip()
+        logger.info(f"[Categorize] Received category suggestion '{suggested_category}' for {filename}")
+
+        # Optional: Validate if the category is in our list (AI might hallucinate)
+        #TODO here: iterate through the list and check if the suggested category is in the list. if not, try aagain. if we fail two times, return other. We will use general requirements then. 
+        if suggested_category not in CONTRACT_CATEGORIES:
+            logger.warning(f"[Categorize] AI suggested category '{suggested_category}' which is not in the predefined list for {filename}. Using 'Other'.")
+            final_category = "Other"
+        else:
+            final_category = suggested_category
+
+        logger.info(f"[Categorize] Final category for {filename}: {final_category}")
+        return {"filename": filename, "category": final_category}
+
+    except HTTPException as http_exc:
+        # Re-raise known HTTP exceptions
+        raise http_exc
+    except Exception as e:
+        logger.error(f"[Categorize] Error processing file {filename}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred during categorization: {e}")
+    finally:
+        # 6. Clean up temporary file
+        if temp_file_path and temp_file_path.exists():
+            try:
+                temp_file_path.unlink()
+                logger.info(f"[Categorize] Successfully deleted temporary file: {temp_file_path}")
+            except Exception as del_e:
+                logger.error(f"[Categorize] Failed to delete temporary file {temp_file_path}: {del_e}")
+        # Close the uploaded file handle
+        if file:
+            await file.close()
 
 # Note: Uvicorn reload is handled by the 'watchfiles' command in the Dockerfile CMD 
