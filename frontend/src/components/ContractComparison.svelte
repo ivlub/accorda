@@ -58,85 +58,34 @@
           console.log('Received data from API:', data); // Log received data
           
           try {
-              // 1. Generate line diffs using 'diff' library
-              const lineDiffs: Diff.Change[] = Diff.diffLines(data.text1 || '', data.text2 || '');
-              console.log('Generated Line Diffs:', lineDiffs); // Log the raw line diffs
+              // 1. Generate a unified diff patch string using 'diff' library
+              const oldFileName = data.filename1 || 'file1';
+              const newFileName = data.filename2 || 'file2';
+              const oldStr = data.text1 || '';
+              const newStr = data.text2 || '';
 
-              // 2. Construct the input structure for Diff2Html
-              // diff2html expects an array of file diff objects.
-              // We'll create one file diff object representing the comparison.
-              const diffJson = [
-                  {
-                      blocks: [] as any[], // Use 'any[]' for blocks for now, structure is complex
-                      // Correctly return sum from reduce and type it
-                      deletedLines: lineDiffs.filter((part: Diff.Change) => part.removed).reduce((sum: number, part: Diff.Change): number => sum + (part.count || 0), 0),
-                      addedLines: lineDiffs.filter((part: Diff.Change) => part.added).reduce((sum: number, part: Diff.Change): number => sum + (part.count || 0), 0),
-                      isGitDiff: false, // Indicate it's not a git-specific diff
-                      isCombined: false, // Add missing required property
-                      oldName: data.filename1 || 'file1',
-                      newName: data.filename2 || 'file2',
-                      language: 'plaintext', // Or try to detect? Start simple.
-                      hunks: [] // Keeping hunks empty for now
-                  }
-              ];
+              console.log('Received text lengths:', { text1: oldStr.length, text2: newStr.length });
 
-              // Attempt to structure line diffs into blocks for diff2html
-              let currentBlock: { header: string; lines: any[]; oldStartLine: number; newStartLine: number; } | null = null;
-              let oldLineNum = 1;
-              let newLineNum = 1;
+              // Use createTwoFilesPatch to generate a standard diff format string
+              const diffPatch = Diff.createTwoFilesPatch(
+                  oldFileName,
+                  newFileName,
+                  oldStr,
+                  newStr,
+                  '', // oldHeader - Optional
+                  '', // newHeader - Optional
+                  { context: 100 } // Increase context lines significantly
+              );
+              console.log('Generated Unified Diff Patch:', diffPatch); // Log the patch string
+              console.log('Generated Diff Patch length:', diffPatch.length); // Log patch length
 
-              // Explicitly type part in forEach
-              lineDiffs.forEach((part: Diff.Change) => {
-                  const lines = part.value.split('\n');
-                  if (lines[lines.length - 1] === '') lines.pop(); 
-
-                  // Explicitly type lineContent in forEach
-                  lines.forEach((lineContent: string, index: number) => {
-                      let type;
-                      if (part.added) {
-                          type = 'insert';
-                      } else if (part.removed) {
-                          type = 'delete';
-                      } else {
-                          type = 'context';
-                      }
-
-                      // diff2html expects line objects within blocks
-                      const lineObj = {
-                          content: lineContent,
-                          type: type,
-                          oldNumber: part.removed || !part.added ? oldLineNum : undefined,
-                          newNumber: part.added || !part.added ? newLineNum : undefined,
-                      };
-                      
-                      // Simple block creation - might need improvement
-                      if (!currentBlock) {
-                           // Heuristic for header - might need adjustment
-                          currentBlock = { header: `Block starting near line ${oldLineNum}/${newLineNum}`, lines: [], oldStartLine: oldLineNum, newStartLine: newLineNum }; 
-                          diffJson[0].blocks.push(currentBlock as any);
-                      }
-                      currentBlock.lines.push(lineObj);
-                      
-                      // Increment line numbers
-                      if (!part.added) oldLineNum++;
-                      if (!part.removed) newLineNum++;
-
-                      // Crude way to split blocks - could be improved
-                      // if (type === 'context' && index === lines.length - 1) { 
-                      //     currentBlock = null;
-                      // }
-                  });
-                    // Reset block after each part? Might group too much or too little.
-                    // currentBlock = null;
-              });
-
-              console.log('Constructed Diff JSON for Diff2Html:', diffJson); // Log the constructed JSON
-
-              // 3. Generate HTML using diff2html from the constructed JSON structure
-              comparisonResult = Diff2Html.html(diffJson, { // Pass constructed JSON here
+              // 2. Generate HTML using diff2html directly from the patch string
+              comparisonResult = Diff2Html.html(diffPatch, { // Pass the patch string here
                   drawFileList: false, 
                   outputFormat: 'side-by-side', 
-                  renderNothingWhenEmpty: false 
+                  renderNothingWhenEmpty: false,
+                  matching: 'lines', // Improve matching accuracy
+                  // wordByWordThreshold: 0.25 // Experiment with word-level diff if needed
               });
               console.log('Generated HTML:', comparisonResult); // Log the final HTML
           } catch (genError: any) {
