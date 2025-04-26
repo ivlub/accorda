@@ -98,7 +98,7 @@
     <!-- Content Area -->
     <div class="flex-1 flex flex-col overflow-hidden">
       <!-- Minimal Top Bar (Optional) -->
-      <TopBar {currentView} on:signOut={handleSignOut} />
+      <TopBar {currentView} on:signOut={handleSignOut} on:navigate={(event) => navigate(event.detail)} />
 
       <!-- Main Content Scroll Area -->
       <main class="flex-1 overflow-x-hidden overflow-y-auto bg-neutral-lightest" id="main-content">

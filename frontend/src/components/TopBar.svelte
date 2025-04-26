@@ -1,16 +1,31 @@
 <script lang="ts">
   import { Bell, HelpCircle, Settings, LogOut } from 'lucide-svelte'; // Import Lucide icons and LogOut icon
   import { createEventDispatcher } from 'svelte'; // Import event dispatcher
+  import Modal from './Modal.svelte'; // Import Modal component
 
   // Define the view type directly or import from App.svelte if preferred
   type View = 'welcome' | 'analysis' | 'comparison' | 'summary' | 'help';
 
   export let currentView: View;
 
+  let showNotificationModal = false; // State for modal visibility
+
   const dispatch = createEventDispatcher(); // Create dispatcher instance
 
   function handleSignOut() {
     dispatch('signOut');
+  }
+
+  function navigateToHelp() {
+    dispatch('navigate', 'help'); // Dispatch navigate event with 'help'
+  }
+
+  function openNotificationModal() {
+    showNotificationModal = true;
+  }
+
+  function closeNotificationModal() {
+    showNotificationModal = false;
   }
 
   const viewTitles = {
@@ -35,13 +50,20 @@
     </div>
     <div class="ml-4 flex items-center md:ml-6 space-x-1 sm:space-x-2">
       <!-- Placeholder: Notifications -->
-      <button type="button" title="Notifications" class="bg-neutral-white p-1.5 rounded-full text-neutral-dark hover:text-neutral-darkest focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-muted">
+      <button 
+        on:click={openNotificationModal} 
+        type="button" 
+        title="Notifications" 
+        class="relative bg-neutral-white p-1.5 rounded-full text-neutral-dark hover:text-neutral-darkest focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-muted"
+      >
         <span class="sr-only">View notifications</span>
         <svelte:component this={Bell} class="h-5 w-5" strokeWidth={1.75} />
+        <!-- Notification Dot -->
+        <span class="absolute top-1 right-1 block h-2 w-2 rounded-full bg-red-500 ring-1 ring-white"></span>
       </button>
 
        <!-- Placeholder: Help/Support -->
-       <button type="button" title="Help" class="bg-neutral-white p-1.5 rounded-full text-neutral-dark hover:text-neutral-darkest focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-muted">
+       <button on:click={navigateToHelp} type="button" title="Help" class="bg-neutral-white p-1.5 rounded-full text-neutral-dark hover:text-neutral-darkest focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-muted">
           <span class="sr-only">Help</span>
           <svelte:component this={HelpCircle} class="h-5 w-5" strokeWidth={1.75} />
        </button>
@@ -60,3 +82,8 @@
     </div>
   </div>
 </div> 
+
+<!-- Notification Modal -->
+<Modal bind:showModal={showNotificationModal} title="Notification" on:close={closeNotificationModal}>
+    <p>Yes, even this button does something. Attention to detail is important for us.</p>
+</Modal> 
