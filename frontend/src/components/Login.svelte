@@ -28,14 +28,43 @@
     style="background-image: url('/world_global.svg');"
 >
     
-    <!-- Logo placed outside the card, top-left -->
-    <img class="absolute top-0 left-0 m-8 h-36 w-auto" src="/logo.svg" alt="Accorda Logo">
+    <!-- Logo replaced with inline SVG for animation -->
+    <div class="absolute top-0 left-0 m-8 h-36 w-auto text-brand-accent z-20">
+      <svg width="100%" height="100%" viewBox="0 0 739 661" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
+          <g transform="matrix(1,0,0,1,-2971,-2811)">
+              <!-- <rect id="Artboard3" x="2971" y="2811" width="739" height="661" style="fill:none;"/> --> <!-- Removed unused rect -->
+              <g id="Artboard31" serif:id="Artboard3">
+                  <g transform="matrix(1,0,0,1,-0.284624,2810)">
+                      <g transform="matrix(1.51798,0,0,0.758997,1023.29,-43.6085)">
+                          <g transform="matrix(0.411058,0,0,1.0033,635.841,-3935.36)">
+                              <!-- Added class logo-path-animate -->
+                              <path class="logo-path-animate" d="M2189.75,4173.88C2197.71,4183.2 2203,4190.28 2203,4190.28L2203,4072.92L2317.31,4072.92L2317.31,4602.17L2203,4602.17L2203,4494.61C2198.6,4499.45 2186.6,4520.53 2160.2,4539.8C2044.55,4624.2 1829.54,4593.13 1756.91,4443.68C1698.79,4324.09 1756.26,4200.56 1858.47,4141.03C1957.14,4083.57 2113.98,4085.1 2189.75,4173.88ZM2020,4180C1844.62,4180 1778.41,4389.18 1909.91,4475.18C2025.16,4550.55 2190.71,4483.19 2202.63,4355.82C2210.05,4276.59 2134.94,4180 2020,4180Z"/>
+                          </g>
+                          <g transform="matrix(0.607418,0,0,0.869962,915.186,-1064.82)">
+                              <g transform="matrix(0.339292,0,0,0.493828,1029.41,-792.594)">
+                                   <!-- Added class logo-path-animate -->
+                                  <path class="logo-path-animate" d="M790.302,4852C750.92,4958.18 656.768,5033 547,5033C401.846,5033 284,4902.16 284,4741C284,4579.84 401.846,4449 547,4449C656.768,4449 750.92,4523.82 790.302,4630L673.089,4630C643.583,4588.11 597.645,4561.17 546.083,4561.17C457.144,4561.17 394,4642.25 394,4741C394,4839.75 457.144,4919 546.083,4919C596.889,4919 642.235,4892.84 671.78,4852L790.302,4852Z"/>
+                              </g>
+                              <g transform="matrix(0.339292,0,0,0.493828,1032.13,-486.421)">
+                                   <!-- Added class logo-path-animate -->
+                                  <path class="logo-path-animate" d="M790.302,4852C750.92,4958.18 656.768,5033 547,5033C401.846,5033 284,4902.16 284,4741C284,4579.84 401.846,4449 547,4449C656.768,4449 750.92,4523.82 790.302,4630L673.089,4630C643.583,4588.11 597.645,4561.17 546.083,4561.17C457.144,4561.17 394,4642.25 394,4741C394,4839.75 457.144,4919 546.083,4919C596.889,4919 642.235,4892.84 671.78,4852L790.302,4852Z"/>
+                              </g>
+                          </g>
+                      </g>
+                      <g transform="matrix(0.567767,0,0,0.567767,2987.35,426.259)">
+                          <!-- Text part - not animating this currently -->
+                          <text x="157px" y="304px" style="font-family:'SourceSerifPro-Bold', 'Source Serif Pro', serif;font-weight:700;font-size:251.288px;fill:currentColor;">ac<tspan x="417.586px 544.738px 686.716px 799.293px 946.045px " y="304px 304px 304px 304px 304px ">corda</tspan></text>
+                      </g>
+                  </g>
+              </g>
+          </g>
+      </svg>
+    </div>
 
-    <div class="w-full max-w-md"> 
+    <div class="w-full max-w-md z-10"> <!-- Added z-10 to ensure card is above background potentially -->
         
         <div class="bg-white p-8 rounded-2xl shadow-xl space-y-6">
             
-            <!-- Removed logo from here -->
 
             <div class="text-center"> <!-- Restored original centering and padding removed -->
                 <h2 class="text-3xl font-bold text-neutral-darkest"> <!-- Restored original size -->
@@ -107,4 +136,21 @@
 
 <style>
     /* Styles remain minimal as Tailwind handles most of it */
+
+    /* SVG Animation Styles */
+    @keyframes draw {
+        to {
+            stroke-dashoffset: 0;
+        }
+    }
+
+    .logo-path-animate {
+        stroke: currentColor; /* Use the text color set on the parent div */
+        stroke-width: 8; /* Increased stroke width */
+        fill: none; /* Hide the default fill */
+        stroke-dasharray: 5000; /* Increased value */
+        stroke-dashoffset: 5000; /* Increased value */
+        animation: draw 3s ease-in-out forwards; /* Apply animation */
+        animation-delay: 0.5s; /* Small delay before starting */
+    }
 </style> 
