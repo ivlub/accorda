@@ -9,8 +9,8 @@
       "explanation": "Parties A and B are explicitly named and their roles defined in Section 2."
     },
     "object_of_contract": {
-      "met": true,
-      "explanation": "The object, a consulting service, is described in Section 3."
+      "met": "maybe",
+      "explanation": "The object is mentioned as 'consulting services' but the scope is not fully defined, leading to uncertainty (Section 3)."
     },
     "obligations_of_parties": {
       "met": false,

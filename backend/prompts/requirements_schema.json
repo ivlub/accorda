@@ -7,7 +7,7 @@
           },
           {
             "id": "parties_involved",
-            "description": "The parties involved (beneficiaries) are clearly identified."
+            "description": "All parties involved are clearly and specifically identified by name or legal entity within the document. Placeholders or blanks (e.g., '_______') for party names indicate this is not met."
           },
           {
             "id": "object_of_contract",

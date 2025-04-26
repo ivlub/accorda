@@ -1,10 +1,10 @@
 <script lang="ts">
   import { fade } from 'svelte/transition';
-  import { UploadCloud, Play, Loader2, AlertTriangle, FileText as FileIcon, CheckCircle2, XCircle } from 'lucide-svelte';
+  import { UploadCloud, Play, Loader2, AlertTriangle, FileText as FileIcon, CheckCircle2, XCircle, HelpCircle } from 'lucide-svelte';
 
   // Define the structure of the expected response
   interface RequirementCheckResult {
-    met: boolean;
+    met: boolean | 'maybe';
     explanation: string;
   }
 
@@ -201,11 +201,13 @@
                                                 {#each Object.entries(criteria) as [key, result]} 
                                                     {#if result && typeof result === 'object' && 'met' in result && 'explanation' in result}
                                                      <li class="flex items-start p-4 space-x-3">
-                                                        <svelte:component 
-                                                            this={result.met ? CheckCircle2 : XCircle} 
-                                                            class={`w-5 h-5 mt-0.5 flex-shrink-0 ${result.met ? 'text-green-600' : 'text-red-600'}`}
-                                                            strokeWidth={2}
-                                                        />
+                                                        {#if result.met === true}
+                                                            <svelte:component this={CheckCircle2} class="w-5 h-5 mt-0.5 flex-shrink-0 text-green-600" strokeWidth={2}/>
+                                                        {:else if result.met === false}
+                                                            <svelte:component this={XCircle} class="w-5 h-5 mt-0.5 flex-shrink-0 text-red-600" strokeWidth={2}/>
+                                                        {:else}
+                                                             <svelte:component this={HelpCircle} class="w-5 h-5 mt-0.5 flex-shrink-0 text-yellow-600" strokeWidth={2}/>
+                                                        {/if}
                                                         <div class="flex-grow">
                                                              <p class="font-medium text-neutral-darkest">{formatCriterionKey(key)}</p>
                                                              <p class="text-neutral-dark mt-1">{result.explanation}</p>

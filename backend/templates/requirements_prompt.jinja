@@ -1,5 +1,12 @@
 Analyze the following contract document based on the provided requirements schema.
-For each criterion, determine if it is met (true/false) and provide a brief explanation referencing the document.
+For each criterion, determine if it is met and provide a brief explanation referencing the document.
+For the `met` field, respond with:
+- `true` if the requirement is clearly and fully met.
+- `false` if the requirement is clearly not met or missing.
+- `"maybe"` (as a string) if the requirement is ambiguous, partially met, or there's significant uncertainty based on the text.
+
+**Important Rule for Parties Involved:** If *any* party name or identifier is missing, left blank, or represented by a placeholder (like '_______'), the `parties_involved` criterion CANNOT be marked as `true`. It should be marked as `false` or `maybe` based on the severity and context.
+
 Respond ONLY with a JSON object matching the exact structure and keys shown in the 'OUTPUT_FORMAT_EXAMPLE'. Do not include any text before or after the JSON object.
 
 REQUIREMENTS_SCHEMA:

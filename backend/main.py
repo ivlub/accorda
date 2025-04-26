@@ -6,7 +6,7 @@ import os
 import shutil
 import logging
 from pathlib import Path
-from typing import List
+from typing import List, Literal
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 import json
 
@@ -366,7 +366,7 @@ def load_json_file(file_path: Path):
 # --- Pydantic Models for Contract Requirements Check ---
 
 class RequirementCheckResult(BaseModel):
-    met: bool
+    met: bool | Literal['maybe']
     explanation: str
 
 class CompletenessCheck(BaseModel):
@@ -477,6 +477,12 @@ async def check_contract_requirements(file: UploadFile = File(...)):
         if ai_response_json_str.endswith("```"):
             ai_response_json_str = ai_response_json_str[:-3] # Remove ```
         ai_response_json_str = ai_response_json_str.strip() # Strip again after potential removals
+        
+        # --- FIX: Replace unquoted 'maybe' --- 
+        # Sometimes the AI might forget quotes around the string "maybe"
+        ai_response_json_str = ai_response_json_str.replace(': maybe', ': "maybe"') 
+        # Consider adding variations if needed, e.g., .replace(':maybe', ': "maybe"')
+        # --------------------------------------
 
         try:
             ai_response_data = json.loads(ai_response_json_str)
