@@ -8,3 +8,14 @@ json schema step 2
 summarize endpoint
 formal requirements put quote hardcode
 fix linter error
+
+offensive defensive neutral analysis /rate_stance endpoint
+
+in specific requiremetns, dont say met not met maybe, either say nothing, or say "further legal review needed" or "missing"
+don't just check, actually evaluate and list out
+
+
+how to use tab
+
+
+add an additional option to paste text(besides upload)

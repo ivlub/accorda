@@ -51,7 +51,7 @@
   }
 
   // --- Component State ---
-  type AnalysisPhase = 'idle' | 'general' | 'category' | 'done' | 'error';
+  type AnalysisPhase = 'idle' | 'summary' | 'general' | 'category' | 'done' | 'error';
 
   let currentStep: 1 | 2 | 3 = 1;
   let selectedLawType: 'civil' | 'common' = 'common';
@@ -59,11 +59,13 @@
   let uploadedFileName: string | null = null;
   
   let analysisPhase: AnalysisPhase = 'idle';
+  let contractSummary: string | null = null;
   let generalRequirementsResult: ContractRequirementsResponse | null = null; // Renamed
   let contractCategory: string | null = null;
   let categoryAnalysisResult: Record<string, CategoryRequirementsResult> | null = null;
   let categoryAnalysisMessage: string | null = null; // For messages like "not supported"
-  let analysisError: string | null = null; // Consolidated error message
+  let analysisError: string | null = null; // Consolidated error message for general/category
+  let summaryError: string | null = null; // <<< New state for summary-specific errors
 
   // Define backend URL (adjust if necessary)
   const API_BASE_URL = 'http://localhost:8000'; 
@@ -71,7 +73,9 @@
   function goToStep(step: 1 | 2 | 3) {
       currentStep = step;
       analysisError = null; // Clear errors when moving steps
+      summaryError = null; // <<< Clear summary error
       if (step === 1 || step === 2) {
+          contractSummary = null; // <<< Reset summary
           generalRequirementsResult = null; 
           contractCategory = null;
           categoryAnalysisResult = null;
@@ -87,6 +91,8 @@
           uploadedFile = target.files[0];
           uploadedFileName = uploadedFile.name;
           analysisError = null;
+          summaryError = null; // <<< Reset summary error
+          contractSummary = null; // <<< Reset summary
           generalRequirementsResult = null; // Clear previous results fully
           contractCategory = null;
           categoryAnalysisResult = null;
@@ -107,23 +113,61 @@
     
     // Reset state for new analysis
     analysisError = null;
+    summaryError = null; // <<< Reset summary error
+    contractSummary = null; // <<< Reset summary
     generalRequirementsResult = null;
     contractCategory = null;
     categoryAnalysisResult = null;
     categoryAnalysisMessage = null;
-    analysisPhase = 'general';
+    analysisPhase = 'summary'; // <<< Start with summary phase
     goToStep(3); // Go to results page immediately to show progress
 
     console.log(`Starting analysis for ${uploadedFileName}...`);
-    const formData = new FormData();
-    formData.append('file', uploadedFile);
+    
+    // Use separate FormData for each request
+    const formDataSummary = new FormData();
+    formDataSummary.append('file', uploadedFile);
+    
+    const formDataGeneral = new FormData();
+    formDataGeneral.append('file', uploadedFile);
 
-    // --- Call 1: General Requirements ---
+    const formDataCat = new FormData(); 
+    formDataCat.append('file', uploadedFile);
+
+
+    // --- Call 1: Summary ---
+    try {
+        console.log("[Analysis] Calling /analyze/summary...");
+        const responseSummary = await fetch(`${API_BASE_URL}/api/analyze/summary`, {
+            method: 'POST',
+            body: formDataSummary,
+        });
+
+        if (!responseSummary.ok) {
+            let errorDetail = "Failed during summary generation.";
+            try { errorDetail = (await responseSummary.json()).detail || errorDetail; } catch (e) {/* ignore */}
+            throw new Error(errorDetail);
+        }
+
+        const summaryResult = await responseSummary.json();
+        contractSummary = summaryResult.summary;
+        console.log("[Analysis] Summary Result:", contractSummary);
+        analysisPhase = 'general'; // <<< Move to general phase on success
+
+    } catch (error) {
+        console.error("[Analysis] Summary call failed:", error);
+        summaryError = error instanceof Error ? error.message : "An unknown error occurred during summary generation.";
+        analysisPhase = 'error'; // <<< Set error phase
+        return; // Stop analysis if summary fails
+    }
+
+
+    // --- Call 2: General Requirements ---
     try {
         console.log("[Analysis] Calling /check-requirements...");
         const responseGeneral = await fetch(`${API_BASE_URL}/api/analyze/check-requirements`, {
             method: 'POST',
-            body: formData, // Send the form data
+            body: formDataGeneral, // Send the form data
         });
 
         if (!responseGeneral.ok) {
@@ -143,10 +187,8 @@
         return; // Stop analysis here if general check fails
     }
 
-    // --- Call 2: Category-Specific Requirements ---
+    // --- Call 3: Category-Specific Requirements ---
     // Re-create FormData as it might be consumed by the first fetch in some environments
-    const formDataCat = new FormData(); 
-    formDataCat.append('file', uploadedFile);
     try {
         console.log("[Analysis] Calling /check-category-requirements...");
         const responseCategory = await fetch(`${API_BASE_URL}/api/analyze/check-category-requirements`, {
@@ -289,10 +331,10 @@
             <div class="mb-8 flex justify-end">
                 <button
                     on:click={startAnalysis} 
-                    disabled={!uploadedFile || analysisPhase === 'general' || analysisPhase === 'category'} 
+                    disabled={!uploadedFile || ['summary', 'general', 'category'].includes(analysisPhase)} 
                     class="px-5 py-2.5 bg-brand-dark text-white rounded-md font-semibold text-sm hover:bg-neutral-darkest focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-dark disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-neutral-medium transition duration-150 ease-in-out flex items-center justify-center space-x-2 shadow-sm"
                 >
-                    {#if analysisPhase === 'general' || analysisPhase === 'category'}
+                    {#if ['summary', 'general', 'category'].includes(analysisPhase)}
                         <svelte:component this={Loader2} class="animate-spin h-4 w-4 text-white" />
                         <span>Analyzing...</span>
                     {:else}
@@ -311,7 +353,7 @@
                  <button 
                     on:click={() => goToStep(2)} 
                     class="px-3 py-1.5 text-sm text-neutral-dark hover:text-neutral-darkest hover:bg-neutral-lightest rounded-md transition duration-150 ease-in-out flex items-center space-x-1"
-                    disabled={analysisPhase === 'general' || analysisPhase === 'category'} 
+                    disabled={['summary', 'general', 'category'].includes(analysisPhase)} 
                  >
                     <svelte:component this={ArrowLeft} class="w-4 h-4" />
                     <span>Back to Upload</span>
@@ -321,6 +363,41 @@
              {#if uploadedFileName}
                 <p class="text-sm text-neutral-medium mb-4">File: <span class="font-medium text-neutral-dark">{uploadedFileName}</span></p>
              {/if}
+
+             <!-- <<< START: Summary Section >>> -->
+             <details class="mb-6 group" open>
+                 <summary class="list-none cursor-pointer flex items-center justify-between pb-3 border-b border-neutral-light mb-4">
+                     <h3 id="summary-heading" class="text-lg font-semibold text-neutral-dark font-serif">Contract Summary</h3>
+                     <svelte:component this={ChevronDown} class="w-5 h-5 text-neutral-dark group-open:rotate-180 transition-transform flex-shrink-0 ml-2"/>
+                 </summary>
+                 <section aria-labelledby="summary-heading">
+                     {#if analysisPhase === 'summary'}
+                         <!-- Loading state for summary -->
+                         <div class="text-neutral-dark flex items-center justify-center text-center p-6 border border-dashed border-neutral-light rounded-md min-h-[100px] bg-neutral-lightest">
+                             <div><svelte:component this={Loader2} class="animate-spin h-6 w-6 text-brand-muted mx-auto mb-2" /> Generating summary...</div>
+                         </div>
+                     {:else if summaryError}
+                         <!-- Error state for summary -->
+                         <div class="p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-700 flex items-start space-x-2">
+                             <svelte:component this={AlertTriangle} class="w-5 h-5 flex-shrink-0 mt-0.5" />
+                             <div>
+                                 <span class="font-medium">Summary Failed:</span> {summaryError}
+                             </div>
+                         </div>
+                     {:else if contractSummary}
+                         <!-- Display summary -->
+                         <div class="bg-neutral-white p-4 rounded-md border border-neutral-light shadow-sm text-sm text-neutral-darkest prose prose-sm max-w-none">
+                             <p>{contractSummary}</p>
+                         </div>
+                     {:else if analysisPhase !== 'idle'} 
+                      <!-- Fallback if no summary and not loading/error (shouldn't happen if summary is first) -->
+                         <div class="text-neutral-medium px-4 py-6 text-center border border-dashed border-neutral-light rounded-md min-h-[100px]">
+                             <p>Summary will appear here.</p>
+                         </div>
+                     {/if}
+                 </section>
+             </details>
+             <!-- <<< END: Summary Section >>> -->
 
             <!-- General Requirements Section -->
             {#if generalRequirementsResult}
@@ -364,11 +441,16 @@
                     </section>
                 </details>
              {:else if analysisPhase === 'general'} 
-                <!-- Show initial loading for general results -->
-                 <div class="text-neutral-dark flex items-center justify-center h-full text-center p-10 border border-dashed border-neutral-light rounded-md min-h-[100px]">
-                    <div><svelte:component this={Loader2} class="animate-spin h-6 w-6 text-brand-muted mx-auto mb-2" /> Analyzing general requirements...</div>
-                </div>
-            {/if}
+                 <!-- Show initial loading for general results -->
+                  <div class="text-neutral-dark flex items-center justify-center h-full text-center p-10 border border-dashed border-neutral-light rounded-md min-h-[100px]">
+                     <div><svelte:component this={Loader2} class="animate-spin h-6 w-6 text-brand-muted mx-auto mb-2" /> Analyzing general requirements...</div>
+                 </div>
+             {:else if analysisPhase === 'category' || analysisPhase === 'done'}
+                 <!-- Show placeholder if general analysis didn't load but subsequent steps did -->
+                 <div class="text-neutral-medium px-4 py-6 text-center border border-dashed border-neutral-light rounded-md min-h-[100px]">
+                     <p>General requirements analysis will appear here.</p>
+                 </div>
+             {/if}
 
             <!-- Category Specific Requirements Section -->
             <details class="mt-8 group" open> <!-- Collapsible wrapper for category section -->
