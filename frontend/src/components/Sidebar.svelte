@@ -29,15 +29,36 @@
       <!-- Logo Area -->
       <div class="flex items-center flex-shrink-0 px-4 mb-5">
          <button 
-           class="flex items-center space-x-2 text-neutral-white focus:outline-none" 
+           class="flex items-center space-x-1 focus:outline-none"
            on:click={() => navigate('welcome')}
            aria-label="Go to Accorda home"
          >
-            <!-- Use Lucide Brain component for Logo -->
-            <div class="h-8 w-8 bg-brand-accent rounded flex items-center justify-center">
-              <svelte:component this={Brain} class="h-5 w-5 text-white" strokeWidth={2} />
+            <!-- Inline Logo SVG (logo_nosign.svg) -->
+            <div class="h-8 w-auto text-brand-accent">
+              <svg width="100%" height="100%" viewBox="0 0 739 640" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
+                  <g transform="matrix(1,0,0,1,-4717.49,-3026)">
+                      <g id="Artboard2" transform="matrix(1,0,0,0.238806,1746.49,3025.76)">
+                          <!-- <rect x="2971" y="1" width="739" height="2680" style="fill:none;"/> --> <!-- Removed unused rect -->
+                          <g transform="matrix(1.51798,0,0,3.1783,1022.93,40.3269)">
+                              <g>
+                                  <g transform="matrix(0.411058,0,0,1.0033,635.841,-3935.36)">
+                                      <path d="M2189.75,4173.88C2197.71,4183.2 2203,4190.28 2203,4190.28L2203,4072.92L2317.31,4072.92L2317.31,4602.17L2203,4602.17L2203,4494.61C2198.6,4499.45 2186.6,4520.53 2160.2,4539.8C2044.55,4624.2 1829.54,4593.13 1756.91,4443.68C1698.79,4324.09 1756.26,4200.56 1858.47,4141.03C1957.14,4083.57 2113.98,4085.1 2189.75,4173.88ZM2020,4180C1844.62,4180 1778.41,4389.18 1909.91,4475.18C2025.16,4550.55 2190.71,4483.19 2202.63,4355.82C2210.05,4276.59 2134.94,4180 2020,4180Z" style="fill:currentColor;"/>
+                                  </g>
+                                  <g transform="matrix(0.607418,0,0,0.869962,915.186,-1064.82)">
+                                      <g transform="matrix(0.339292,0,0,0.493828,1029.41,-792.594)">
+                                          <path d="M790.302,4852C750.92,4958.18 656.768,5033 547,5033C401.846,5033 284,4902.16 284,4741C284,4579.84 401.846,4449 547,4449C656.768,4449 750.92,4523.82 790.302,4630L673.089,4630C643.583,4588.11 597.645,4561.17 546.083,4561.17C457.144,4561.17 394,4642.25 394,4741C394,4839.75 457.144,4919 546.083,4919C596.889,4919 642.235,4892.84 671.78,4852L790.302,4852Z" style="fill:currentColor;"/>
+                                      </g>
+                                      <g transform="matrix(0.339292,0,0,0.493828,1032.13,-486.421)">
+                                          <path d="M790.302,4852C750.92,4958.18 656.768,5033 547,5033C401.846,5033 284,4902.16 284,4741C284,4579.84 401.846,4449 547,4449C656.768,4449 750.92,4523.82 790.302,4630L673.089,4630C643.583,4588.11 597.645,4561.17 546.083,4561.17C457.144,4561.17 394,4642.25 394,4741C394,4839.75 457.144,4919 546.083,4919C596.889,4919 642.235,4892.84 671.78,4852L790.302,4852Z" style="fill:currentColor;"/>
+                                      </g>
+                                  </g>
+                              </g>
+                          </g>
+                      </g>
+                  </g>
+              </svg>
             </div>
-            <span class="font-bold text-xl tracking-tight">Accorda</span>
+            <span class="font-serif font-bold text-2xl tracking-tight text-brand-accent">Accorda</span>
          </button>
       </div>
       <nav class="mt-5 flex-1 flex flex-col divide-y divide-neutral-light divide-opacity-10" aria-label="Sidebar">
