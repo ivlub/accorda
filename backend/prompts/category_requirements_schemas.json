@@ -2,22 +2,22 @@
   "Non-Disclosure Agreement": {
     "criteria": [
       {"id": "date_of_formation", "description": "Extract the effective date or date the agreement was formed."},
-      {"id": "jurisdiction", "description": "Extract the governing law or jurisdiction clause."},
+      {"id": "jurisdiction", "description": "Extract the relevant jurisdiction or jurisdiction clause."},
       {"id": "parties_identification", "description": "Extract the full names, addresses, and representative details (if mentioned) for all parties (Disclosing and Receiving)."},
       {"id": "definition_confidential_info", "description": "Extract the definition of 'Confidential Information', including any specific examples or exclusions mentioned."},
-      {"id": "people_beneficiaries", "description": "Extract any mention of third-party beneficiaries or clauses indicating if the contract is strictly between the named parties ('intuitu personae')."},
-      {"id": "object_of_contract", "description": "Extract the stated purpose or object of the NDA (e.g., specific business opportunity, discussion topic)."},
-      {"id": "social_function", "description": "Extract any clauses describing the broader social or economic purpose, if explicitly stated (rare in NDAs)."},
-      {"id": "obligations_disclosing", "description": "Extract the obligations specifically placed upon the Disclosing Party."},
-      {"id": "obligations_receiving", "description": "Extract the core obligations placed upon the Receiving Party (e.g., non-disclosure, non-use, return/destruction)."},
+      {"id": "beneficiaries", "description": "Extract any mention of third-party beneficiaries."},
+      {"id": "object_of_the_contract", "description": "Extract the stated purpose or object of the NDA (e.g., specific business opportunity, discussion topic)."},
+      {"id": "social_function_of_the_contract", "description": "Extract any clauses describing the broader social or economic purpose of the contract, if explicitly stated."},
+      {"id": "obligations_of_the_disclosing_party", "description": "Extract the obligations specifically placed upon the Disclosing Party."},
+      {"id": "obligations_of_the_receiving_party", "description": "Extract the obligations placed upon the Receiving Party (e.g., non-disclosure, non-use, return/destruction)."},
       {"id": "rights_disclosing", "description": "Extract the rights explicitly granted to or retained by the Disclosing Party."},
-      {"id": "rights_receiving", "description": "Extract the rights explicitly granted to the Receiving Party (often limited, e.g., right to use for evaluation)."},
-      {"id": "effect_conditions_term", "description": "Extract the duration of the confidentiality obligation (term) and any conditions affecting when the agreement takes effect or its ongoing validity."},
-      {"id": "termination", "description": "Extract the conditions or process for terminating the agreement itself."},
-      {"id": "penalty_clause", "description": "Extract any specific penalties mentioned for breach of the agreement."},
+      {"id": "rights_receiving", "description": "Extract the rights explicitly granted to the Receiving Party (e.g., right to use for evaluation)."},
+      {"id": "effect_clauses", "description": "Extract clauses defining the duration (term) and any conditions affecting the agreement's effect or validity."},
+      {"id": "termination", "description": "Extract the conditions or process for terminating the agreement itself ."},
+      {"id": "penalty_clause", "description": "Extract any specific penalties mentioned for breach of the agreement. Say it is: compensatory or punitive (when applicable)."},
       {"id": "remedies", "description": "Extract clauses mentioning available remedies (e.g., injunctive relief, damages)."},
-      {"id": "adr_clause", "description": "Extract any clause related to Alternative Dispute Resolution (e.g., arbitration, mediation)."},
-      {"id": "governing_law_clause", "description": "Extract the specific clause stating the governing law (duplicate of jurisdiction, but explicit request)."}
+      {"id": "adr_clause", "description": "Extract any clause related to Alternative Dispute Resolution (e.g., arbitration, mediation, negotiation)."},
+      {"id": "governing_law_clause", "description": "Extract the specific clause stating the governing law."}
     ],
     "output_format_example": {
       "date_of_formation": {
@@ -50,17 +50,17 @@
         "value": "The parties wish to explore a potential business relationship concerning the development of a new software product (the 'Purpose').",
         "location": "Recitals, Page 1"
       },
-      "social_function": {
+      "social_function_of_the_contract": {
         "status": "missing",
         "value": null,
         "location": null
       },
-       "obligations_disclosing": {
+       "obligations_of_the_disclosing_party": {
         "status": "review_needed",
         "value": "Disclosing Party shall mark confidential information appropriately.",
         "location": "Section 2.3"
       },
-      "obligations_receiving": {
+      "obligations_of_the_receiving_party": {
         "status": "extracted",
         "value": "Receiving Party shall hold Confidential Information in strict confidence, use it only for the Purpose, and return or destroy it upon request.",
         "location": "Section 3. Obligations of Receiving Party"
@@ -75,7 +75,7 @@
         "value": "No license under any patent, copyright, or trademark is granted.",
         "location": "Section 5. Ownership"
        },
-       "effect_conditions_term": {
+       "effect_clauses": {
         "status": "extracted",
         "value": "The obligations under this Agreement shall survive for a period of five (5) years from the date of disclosure.",
         "location": "Section 8. Term"
