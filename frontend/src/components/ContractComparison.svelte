@@ -46,7 +46,7 @@
 <div class="max-w-7xl mx-auto">
   <div class="space-y-8">
     <!-- Upload Section -->
-    <section aria-labelledby="upload-heading-comparison">
+    <section aria-labelledby="upload-heading-comparison" in:fade={{ duration: 300, delay: 100 }}>
       <h2 id="upload-heading-comparison" class="text-lg font-serif font-semibold text-brand-dark mb-4">Upload Contracts</h2>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
         <!-- Contract 1 Upload Area -->
@@ -83,7 +83,7 @@
     </section>
 
     <!-- Action Button Section -->
-    <div class="text-center pt-2">
+    <div class="text-center pt-2" in:fade={{ duration: 300, delay: 200 }}>
       <button
         on:click={startComparison}
         disabled={!uploadedFile1 || !uploadedFile2 || isComparing}

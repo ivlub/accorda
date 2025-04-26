@@ -43,7 +43,7 @@
     <!-- Left Column: Controls -->
     <div class="lg:col-span-4 space-y-6">
       <!-- Law Type Section -->
-      <section aria-labelledby="law-type-heading">
+      <section aria-labelledby="law-type-heading" in:fade={{ duration: 300, delay: 100 }}>
         <h2 id="law-type-heading" class="text-sm font-semibold text-neutral-darkest mb-3">Law Type</h2>
         <div class="bg-neutral-white p-4 rounded-md border border-neutral-light space-y-2">
            <label class="flex items-center p-2 rounded cursor-pointer transition duration-150 ease-in-out" class:bg-neutral-lightest={selectedLawType === 'common'} class:hover:bg-neutral-lightest={selectedLawType !== 'common'}>
@@ -58,7 +58,7 @@
       </section>
 
       <!-- Upload Section -->
-      <section aria-labelledby="upload-heading">
+      <section aria-labelledby="upload-heading" in:fade={{ duration: 300, delay: 200 }}>
         <h2 id="upload-heading" class="text-sm font-semibold text-neutral-darkest mb-3">Upload Contract</h2>
         <div class="bg-neutral-white p-4 rounded-md border border-neutral-light">
            <label 
@@ -83,19 +83,21 @@
       </section>
 
       <!-- Action Button -->
-      <button
-            on:click={startAnalysis}
-            disabled={!uploadedFile || isUploading}
-            class="w-full px-4 py-2.5 bg-brand-dark text-white rounded-md font-semibold text-sm hover:bg-neutral-darkest focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-dark disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-neutral-medium transition duration-150 ease-in-out flex items-center justify-center space-x-2 shadow-sm"
-        >
-            {#if isUploading}
-                <svelte:component this={Loader2} class="animate-spin h-4 w-4 text-white" />
-                <span>Analyzing...</span>
-            {:else}
-                <svelte:component this={Play} class="w-5 h-5" fill="currentColor" />
-                <span>Start Analysis</span>
-            {/if}
-        </button>
+      <div in:fade={{ duration: 300, delay: 300 }}>
+        <button
+              on:click={startAnalysis}
+              disabled={!uploadedFile || isUploading}
+              class="w-full px-4 py-2.5 bg-brand-dark text-white rounded-md font-semibold text-sm hover:bg-neutral-darkest focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-dark disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-neutral-medium transition duration-150 ease-in-out flex items-center justify-center space-x-2 shadow-sm"
+          >
+              {#if isUploading}
+                  <svelte:component this={Loader2} class="animate-spin h-4 w-4 text-white" />
+                  <span>Analyzing...</span>
+              {:else}
+                  <svelte:component this={Play} class="w-5 h-5" fill="currentColor" />
+                  <span>Start Analysis</span>
+              {/if}
+          </button>
+      </div>
     </div>
 
     <!-- Right Column: Results -->
