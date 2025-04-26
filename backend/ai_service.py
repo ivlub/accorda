@@ -19,9 +19,10 @@ else:
     except Exception as e:
         logger.error(f"Error configuring Google Generative AI: {e}")
 
-# Recommended model: gemini-1.5-flash (adjust if needed)
-# Other options: 'gemini-pro', 'gemini-1.0-pro', 'gemini-1.5-pro-latest'
+# TODO: evaluate which model to use. gemini 2.5 pro is more accurate but slower. 1.5 flash is faster but less accurate.
 DEFAULT_MODEL = 'gemini-1.5-flash'
+# DEFAULT_MODEL = 'gemini-2.5-pro-exp-03-25'    
+
 
 async def generate_text_from_gemini(prompt: str, model_name: str = DEFAULT_MODEL) -> str:
     """
