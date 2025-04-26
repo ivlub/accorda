@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { fade } from 'svelte/transition';
-  import { UploadCloud, Scale, Loader2, AlertTriangle, FileUp, FileDiff, Download } from 'lucide-svelte';
+  import { UploadCloud, Scale, Loader2, AlertTriangle, FileUp, FileDiff, Download, BrainCircuit } from 'lucide-svelte';
   import * as Diff from 'diff';
   import * as Diff2Html from 'diff2html';
   import 'diff2html/bundles/css/diff2html.min.css';
@@ -18,11 +18,17 @@
   let diffExplanation: string | null = null;
   let explanationErrorMessage: string | null = null;
 
+  let selectedPerspective: 'file1' | 'file2' | null = null;
+  let isAnalyzingImpact = false;
+  let impactAnalysisResult: Array<{category: string; explanation: string; change_summary: string}> | null = null;
+  let impactAnalysisErrorMessage: string | null = null;
+
   function handleFileSelect(event: Event, fileNumber: 1 | 2) {
       const target = event.target as HTMLInputElement;
       if (target.files && target.files.length > 0) {
           const file = target.files[0];
           errorMessage = null; comparisonResult = null; diffExplanation = null; explanationErrorMessage = null;
+          selectedPerspective = null; impactAnalysisResult = null; impactAnalysisErrorMessage = null;
           if (fileNumber === 1) {
               if (uploadedFile2 && file === uploadedFile2) { errorMessage = "Cannot select the same file instance."; target.value = ''; return; }
               uploadedFile1 = file; uploadedFile1Name = file.name;
@@ -33,6 +39,8 @@
       } else {
           if (fileNumber === 1) { uploadedFile1 = null; uploadedFile1Name = null; }
           else { uploadedFile2 = null; uploadedFile2Name = null; }
+           errorMessage = null; comparisonResult = null; diffExplanation = null; explanationErrorMessage = null;
+           selectedPerspective = null; impactAnalysisResult = null; impactAnalysisErrorMessage = null;
       }
   }
 
@@ -80,9 +88,98 @@
       }
   }
 
+  async function getDiffImpactAnalysis() {
+      if (!uploadedFile1 || !uploadedFile2 || !selectedPerspective || !uploadedFile1Name || !uploadedFile2Name) {
+          console.error("Missing files or perspective for impact analysis.");
+          impactAnalysisErrorMessage = "Internal error: Missing data for analysis.";
+          return;
+      }
+
+      isAnalyzingImpact = true;
+      impactAnalysisResult = null;
+      impactAnalysisErrorMessage = null;
+      console.log(`Fetching diff impact analysis from perspective of: ${selectedPerspective === 'file1' ? uploadedFile1Name : uploadedFile2Name}`);
+
+      const formData = new FormData();
+      formData.append('file1', uploadedFile1);
+      formData.append('file2', uploadedFile2);
+      const perspectiveFile = selectedPerspective === 'file1' ? uploadedFile1Name : uploadedFile2Name;
+      formData.append('perspective_filename', perspectiveFile); 
+
+      try {
+          const response = await fetch('/api/analyze-diff-impact', {
+              method: 'POST',
+              body: formData,
+          });
+          console.log('Impact Analysis API Response Status:', response.status);
+
+          if (!response.ok) {
+              const errorText = await response.text();
+              console.error('Impact Analysis API Error Response Text:', errorText);
+              let detail = response.statusText;
+              try {
+                  const errorJson = JSON.parse(errorText);
+                  detail = errorJson.detail || detail;
+              } catch (e) { /* Ignore if error text is not JSON */ }
+              throw new Error(detail ? `${detail}` : `HTTP error ${response.status}`);
+          }
+
+          const data = await response.json();
+          console.log('Received impact analysis data from API:', data);
+          
+          if (data.analysis) {
+              impactAnalysisResult = data.analysis; 
+              if (data.message) {
+                   if (impactAnalysisResult && impactAnalysisResult.length === 0) { 
+                       impactAnalysisErrorMessage = data.message; 
+                   } else {
+                        console.log("Impact analysis message:", data.message);
+                   }
+              }
+              console.log("Diff impact analysis fetched successfully.");
+          } else if (data.message) {
+              impactAnalysisErrorMessage = data.message;
+              impactAnalysisResult = [];
+              console.log("Received message instead of analysis:", data.message);
+          }
+           else {
+              throw new Error("Analysis data missing in API response.");
+          }
+
+      } catch (error: any) {
+          console.error("Fetching impact analysis failed:", error);
+          let message = 'Unknown network error or processing issue.';
+          if (error instanceof Error) {
+              message = error.message;
+          } else if (typeof error === 'string') {
+              message = error;
+          } else {
+              try {
+                  message = JSON.stringify(error); 
+              } catch (stringifyError) {
+                  message = 'An unknown error occurred during error processing.';
+              }
+          }
+          impactAnalysisErrorMessage = `Failed to get impact analysis: ${message}`;
+          impactAnalysisResult = null;
+      } finally {
+          isAnalyzingImpact = false;
+      }
+  }
+
   async function startComparison() {
       if (!uploadedFile1 || !uploadedFile2) { errorMessage = "Please select two contract files."; return; }
-      errorMessage = null; isComparing = true; comparisonResult = null; diffExplanation = null; explanationErrorMessage = null; isExplaining = false;
+      errorMessage = null; 
+      isComparing = true; 
+      comparisonResult = null; 
+      diffExplanation = null; 
+      explanationErrorMessage = null; 
+      isExplaining = false; 
+      selectedPerspective = null;
+      impactAnalysisResult = null; 
+      impactAnalysisErrorMessage = null;
+      isAnalyzingImpact = false;
+
       console.log(`Starting comparison between ${uploadedFile1Name} and ${uploadedFile2Name}...`);
 
       const formData = new FormData();
@@ -101,14 +198,18 @@
           if (!response.ok) {
               const errorText = await response.text();
               console.error('API Error Response Text:', errorText);
-              throw new Error(response.statusText + (errorText ? `: ${errorText}` : ''));
+              let detail = response.statusText;
+               try {
+                   const errorJson = JSON.parse(errorText);
+                   detail = errorJson.detail || detail;
+               } catch (e) { /* Ignore if error text is not JSON */ }
+              throw new Error(detail ? `${detail}` : `HTTP error ${response.status}`);
           }
 
           const data = await response.json();
-          console.log('Received data from API:', data); // Log received data
+          console.log('Received data from API:', data); 
           
           try {
-              // 1. Generate a unified diff patch string using 'diff' library
               const oldFileName = data.filename1 || 'file1';
               const newFileName = data.filename2 || 'file2';
               const oldStr = data.text1 || '';
@@ -116,35 +217,21 @@
 
               console.log('Received text lengths:', { text1: oldStr.length, text2: newStr.length });
 
-              // Use createTwoFilesPatch to generate a standard diff format string
               const diffPatch = Diff.createTwoFilesPatch(
-                  oldFileName,
-                  newFileName,
-                  oldStr,
-                  newStr,
-                  '', // oldHeader - Optional
-                  '', // newHeader - Optional
-                  { context: 100 } // Increase context lines significantly
+                  oldFileName, newFileName, oldStr, newStr, '', '', { context: 100 } 
               );
-              console.log('Generated Unified Diff Patch:', diffPatch); // Log the patch string
-              console.log('Generated Diff Patch length:', diffPatch.length); // Log patch length
+              console.log('Generated Unified Diff Patch length:', diffPatch.length);
 
-              // 2. Generate HTML using diff2html directly from the patch string
-              comparisonResult = Diff2Html.html(diffPatch, { // Pass the patch string here
-                  drawFileList: false, 
-                  outputFormat: 'side-by-side', 
-                  renderNothingWhenEmpty: false,
-                  matching: 'lines', // Improve matching accuracy
-                  // wordByWordThreshold: 0.25 // Experiment with word-level diff if needed
+              comparisonResult = Diff2Html.html(diffPatch, { 
+                  drawFileList: false, outputFormat: 'side-by-side', renderNothingWhenEmpty: false, matching: 'lines'
               });
-              console.log('Generated HTML:', comparisonResult); // Log the final HTML
+              console.log('Generated HTML:', comparisonResult ? comparisonResult.substring(0, 100) + '...' : 'null'); 
           } catch (genError: any) {
               console.error("Error generating diff structure or HTML:", genError);
               errorMessage = `Failed to render comparison: ${genError.message}`;
-              comparisonResult = null; // Clear result on error
+              comparisonResult = null; 
           }
           
-          // Only log success if HTML generation didn't throw
           if (comparisonResult) {
               console.log("Comparison successful, diff generated.");
               comparisonSuccess = true;
@@ -392,6 +479,72 @@
   /* .d2h-code-side-line {
     display: none !important;
   } */
+
+  /* Style for perspective radio buttons */
+  .perspective-radio-label {
+      display: inline-flex;
+      align-items: center;
+      cursor: pointer;
+      padding: 6px 12px;
+      border: 1px solid #e5e7eb; /* neutral-light */
+      border-radius: 0.375rem; /* rounded-md */
+      margin-right: 8px;
+      transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out;
+      background-color: #ffffff; /* neutral-white */
+      font-size: 0.875rem; /* text-sm */
+      color: #374151; /* neutral-darkest */
+  }
+  .perspective-radio-label:hover {
+       border-color: #d1d5db; /* neutral-medium */
+  }
+  .perspective-radio-input:checked + .perspective-radio-label {
+      background-color: #f0fdf4; /* lighter green */
+      border-color: #22c55e; /* brand-muted (adjust if needed) */
+      color: #166534; /* darker green */
+      font-weight: 500; /* font-medium */
+  }
+   .perspective-radio-input:disabled + .perspective-radio-label {
+       opacity: 0.6;
+       cursor: not-allowed;
+       background-color: #f3f4f6; /* neutral-lighter */
+   }
+
+  /* Style for impact analysis items */
+   .impact-item {
+       padding: 12px;
+       border: 1px solid #e5e7eb; /* neutral-light */
+       border-radius: 0.375rem; /* rounded-md */
+       margin-bottom: 12px;
+       background-color: #ffffff; /* neutral-white */
+   }
+   .impact-item-header {
+       display: flex;
+       align-items: center;
+       margin-bottom: 8px;
+   }
+   .impact-category-badge {
+       padding: 3px 8px;
+       border-radius: 9999px; /* rounded-full */
+       font-size: 0.75rem; /* text-xs */
+       font-weight: 600; /* font-semibold */
+       margin-right: 8px;
+       white-space: nowrap;
+   }
+   .impact-category-Beneficial { background-color: #dcfce7; color: #16a34a; } /* green */
+   .impact-category-LikelyNeutral { background-color: #e0e7ff; color: #4f46e5; } /* indigo */
+   .impact-category-Prejudicial { background-color: #fee2e2; color: #dc2626; } /* red */
+   .impact-category-FurtherReview { background-color: #fef3c7; color: #d97706; } /* amber */
+
+   /* Optional: Add style for the change summary if desired */
+   .change-summary {
+       margin-top: 8px;
+       padding: 8px;
+       background-color: #f3f4f6; /* neutral-lighter */
+       border-radius: 0.25rem; /* rounded-sm */
+       font-style: italic;
+       color: #4b5563; /* neutral-dark */
+       border-left: 3px solid #d1d5db; /* neutral-medium */
+   }
 </style>
 
 <div class="max-w-7xl mx-auto">
@@ -463,11 +616,7 @@
                           Comparing Documents...
                       </div>
                   {:else if comparisonResult}
-                      <!-- Target div for diff2html output -->
-                      <div 
-                          class="diff-container text-left w-full h-full overflow-auto text-sm border border-neutral-light rounded max-h-[70vh] bg-white"
-                      >
-                           <!-- Render the diff2html generated HTML -->
+                      <div class="diff-container text-left w-full h-full overflow-auto text-sm border border-neutral-light rounded max-h-[70vh] bg-white">
                           {@html comparisonResult}
                       </div>
                   {:else if errorMessage}
@@ -498,7 +647,6 @@
                           Generating explanation...
                       </div>
                   {:else if diffExplanation}
-                       <!-- Render the explanation, potentially preserving whitespace/newlines -->
                       <div class="whitespace-pre-wrap">{@html diffExplanation}</div>
                   {:else if explanationErrorMessage}
                       <div class="text-red-600 flex items-start">
@@ -506,7 +654,6 @@
                           {explanationErrorMessage}
                       </div>
                   {:else if comparisonResult && !isExplaining && !diffExplanation && !explanationErrorMessage}
-                       <!-- Initial state after comparison, before explanation starts/finishes -->
                        <p class="text-neutral-medium italic">Explanation will appear here.</p>
                   {/if}
               </div>
@@ -514,20 +661,101 @@
         </div>
       {/if}
 
-      <!-- <<< NEW: Export Button >>> -->
-      <div class="mt-8 flex justify-end">
-        <button
-            on:click={exportToPdf}
-            disabled={!comparisonResult || !diffExplanation}
-            class="px-4 py-2 bg-neutral-light text-neutral-darkest rounded-md font-semibold text-sm hover:bg-neutral-lighter focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-neutral-medium disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-neutral-light transition duration-150 ease-in-out flex items-center justify-center space-x-2 shadow-sm"
-        >
-            <svelte:component this={Download} class="w-4 h-4" />
-            <span>Export Results (PDF)</span>
-        </button>
-      </div>
-      <!-- <<< END: Export Button >>> -->
+      <!-- Diff Impact Analysis Section -->
+      {#if diffExplanation && !explanationErrorMessage && uploadedFile1Name && uploadedFile2Name} 
+        <div class="mt-8 bg-neutral-white p-6 rounded-md border border-neutral-light">
+          <h3 class="text-base font-semibold text-brand-dark mb-4 flex items-center">
+            <svelte:component this={BrainCircuit} class="w-5 h-5 mr-2 text-brand-dark" strokeWidth={1.75}/>
+            AI Impact Analysis of Changes
+          </h3>
+
+          <!-- Perspective Selection -->
+          <div class="mb-5">
+              <label class="block text-sm font-medium text-neutral-dark mb-2">Analyze impact from the perspective of:</label>
+              <div>
+                  <input type="radio" id="perspective-file1" name="perspective" value="file1" bind:group={selectedPerspective} 
+                         on:change={getDiffImpactAnalysis} 
+                         disabled={isAnalyzingImpact || !uploadedFile1Name}
+                         class="sr-only perspective-radio-input">
+                  <label for="perspective-file1" class="perspective-radio-label" title={uploadedFile1Name}>
+                      File 1: <span class="ml-1 font-normal truncate max-w-[150px] inline-block">{uploadedFile1Name}</span>
+                  </label>
+
+                  <input type="radio" id="perspective-file2" name="perspective" value="file2" bind:group={selectedPerspective} 
+                         on:change={getDiffImpactAnalysis}
+                         disabled={isAnalyzingImpact || !uploadedFile2Name}
+                         class="sr-only perspective-radio-input">
+                  <label for="perspective-file2" class="perspective-radio-label" title={uploadedFile2Name}>
+                      File 2: <span class="ml-1 font-normal truncate max-w-[150px] inline-block">{uploadedFile2Name}</span>
+                  </label>
+              </div>
+          </div>
+
+          <!-- Analysis Results -->
+          {#key impactAnalysisResult || isAnalyzingImpact || impactAnalysisErrorMessage || selectedPerspective}
+            <div class="text-sm text-neutral-darkest space-y-3" in:fade={{ duration: 300 }} out:fade={{ duration: 150 }}>
+                {#if isAnalyzingImpact}
+                    <div class="flex items-center text-neutral-dark py-4">
+                        <svelte:component this={Loader2} class="animate-spin h-4 w-4 mr-2 text-brand-muted" />
+                        Analyzing impact... (This may take a moment)
+                    </div>
+                {:else if impactAnalysisResult && impactAnalysisResult.length > 0}
+                    {#each impactAnalysisResult as item}
+                        <div class="impact-item">
+                           <div class="impact-item-header">
+                               <span class="impact-category-badge impact-category-{item.category.replace(' ', '')}">{item.category}</span>
+                               {#if selectedPerspective === 'file1'}
+                                   <span class="text-xs text-neutral-medium">(Impact to {uploadedFile1Name})</span>
+                               {:else if selectedPerspective === 'file2'}
+                                    <span class="text-xs text-neutral-medium">(Impact to {uploadedFile2Name})</span>
+                               {/if}
+                           </div>
+                            <p class="whitespace-pre-wrap">{item.explanation}</p>
+                            
+                            <!-- <<< UPDATED: Display change_summary instead of diff_snippet >>> -->
+                            {#if item.change_summary}
+                                <div class="change-summary">
+                                     <p><strong>Change Summary:</strong> {item.change_summary}</p>
+                                </div>
+                            {/if}
+                            <!-- <<< END: Update >>> -->
+
+                        </div>
+                    {/each}
+                 {:else if impactAnalysisResult && impactAnalysisResult.length === 0 && !impactAnalysisErrorMessage}
+                     {#if selectedPerspective}  
+                        <p class="text-neutral-medium italic py-4">No specific impacts requiring categorization were identified for {selectedPerspective === 'file1' ? uploadedFile1Name : uploadedFile2Name}.</p>
+                     {/if}
+                {:else if impactAnalysisErrorMessage}
+                    <div class="text-red-600 flex items-start py-4">
+                        <svelte:component this={AlertTriangle} class="h-5 w-5 mr-1.5 mt-0.5 flex-shrink-0" strokeWidth={1.5} />
+                        {impactAnalysisErrorMessage}
+                    </div>
+                {:else if selectedPerspective && !isAnalyzingImpact && !impactAnalysisResult && !impactAnalysisErrorMessage}
+                    <p class="text-neutral-medium italic py-4">Analysis results will appear here.</p>
+                 {:else if !selectedPerspective}
+                      <p class="text-neutral-medium italic py-4">Select a perspective above to analyze the impact of the changes.</p>
+                {/if}
+            </div>
+          {/key}
+        </div>
+      {/if} 
+
+      <!-- Export Button -->
+      {#if comparisonResult && diffExplanation}
+        <div class="mt-8 flex justify-end">
+          <button
+              on:click={exportToPdf}
+              disabled={!comparisonResult || !diffExplanation}
+              class="px-4 py-2 bg-neutral-light text-neutral-darkest rounded-md font-semibold text-sm hover:bg-neutral-lighter focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-neutral-medium disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-neutral-light transition duration-150 ease-in-out flex items-center justify-center space-x-2 shadow-sm"
+          >
+              <svelte:component this={Download} class="w-4 h-4" />
+              <span>Export Results (PDF)</span>
+          </button>
+        </div>
+      {/if}
 
     </section>
 
   </div>
-</div> 
+</div>

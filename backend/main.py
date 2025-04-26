@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, File, UploadFile, Response
+from fastapi import FastAPI, HTTPException, File, UploadFile, Response, Form
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
@@ -6,7 +6,7 @@ import os
 import shutil
 import logging
 from pathlib import Path
-from typing import List, Literal, Dict
+from typing import List, Literal, Dict, Optional
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 import json
 import uuid
@@ -893,6 +893,264 @@ async def explain_contract_diff(file1: UploadFile = File(...), file2: UploadFile
         # Close file handles
         await file1.close()
         await file2.close()
+
+# --- Pydantic Models for Diff Impact Analysis ---
+
+class DiffImpactChange(BaseModel):
+    category: Literal['Beneficial', 'Likely Neutral', 'Prejudicial', 'Further Review Required']
+    explanation: str
+    change_summary: str 
+
+# DiffImpactAnalysisRequest is no longer needed as perspective is passed via query/form
+
+class DiffImpactAnalysisResponse(BaseModel):
+    perspective_filename: str
+    analysis: List[DiffImpactChange]
+    message: Optional[str] = None # For cases with no diff or errors
+
+# --- Main execution ---
+if __name__ == "__main__":
+    # Determine host based on environment (e.g., Docker container vs local)
+    # Docker typically uses 0.0.0.0 to be accessible outside the container
+    host = os.getenv("HOST", "127.0.0.1") 
+    port = int(os.getenv("PORT", 8000))
+    
+    # Log the UPLOAD_DIR and TEMPLATE_DIR at startup
+    logger.info(f"FastAPI application starting up...")
+    logger.info(f"Upload directory set to: {UPLOAD_DIR.resolve()}")
+    if jinja_env:
+        logger.info(f"Template directory set to: {TEMPLATE_DIR.resolve()}")
+    else:
+        logger.warning(f"Template directory not found or not configured.")
+        
+    uvicorn.run(app, host=host, port=port) 
+
+@app.post("/api/analyze-diff-impact", response_model=DiffImpactAnalysisResponse)
+async def analyze_diff_impact(
+    perspective_filename: str = Form(...), 
+    file1: UploadFile = File(...), 
+    file2: UploadFile = File(...)
+):
+    """
+    Receives two contract files and a perspective filename (via form data),
+    generates a diff, asks AI to analyze the impact of changes from the 
+    given perspective, and returns the structured analysis.
+    """
+    if not jinja_env:
+        raise HTTPException(status_code=500, detail="Template engine not initialized.")
+
+    # 1. Validate filenames and types (simplified check)
+    # Ensure filenames are not None before accessing them
+    file1_name = file1.filename if file1.filename else ""
+    file2_name = file2.filename if file2.filename else ""
+    files_dict = {file1_name: file1, file2_name: file2}
+    
+    # Remove empty string key if filenames were missing
+    if "" in files_dict:
+        del files_dict[""]
+        
+    if not file1_name or not file2_name:
+        raise HTTPException(status_code=400, detail="One or both files are missing filenames.")
+
+    if perspective_filename not in files_dict:
+         raise HTTPException(status_code=400, detail=f"Perspective filename '{perspective_filename}' must match one of the uploaded filenames ('{file1_name}' or '{file2_name}').")
+         
+    for file in [file1, file2]:
+        if not file.filename: # Should be caught above, but double-check
+            continue
+        file_extension = Path(file.filename).suffix.lower()
+        if file_extension not in [".pdf", ".docx"]:
+             raise HTTPException(status_code=415, detail=f"Unsupported file type: '{file_extension}' in {file.filename}. Only .pdf and .docx supported.")
+
+    # 2. Setup temporary file paths
+    unique_id_1 = uuid.uuid4()
+    unique_id_2 = uuid.uuid4()
+    # Use validated filenames
+    temp_file_path_1 = UPLOAD_DIR / f"impact_{unique_id_1}_{file1_name}"
+    temp_file_path_2 = UPLOAD_DIR / f"impact_{unique_id_2}_{file2_name}"
+    logger.info(f"[ImpactAnalysis] Receiving files: {file1_name}, {file2_name}. Perspective: {perspective_filename}")
+
+    extracted_text_1 = None
+    extracted_text_2 = None
+    
+    # Define temp_paths within the try block scope
+    temp_paths_to_clean = [] 
+
+    try:
+        # 3. Save files temporarily
+        logger.info(f"[ImpactAnalysis] Saving temp file 1: {temp_file_path_1}")
+        with temp_file_path_1.open("wb") as buffer:
+            shutil.copyfileobj(file1.file, buffer)
+        temp_paths_to_clean.append(temp_file_path_1) # Add to list for cleanup
+
+        logger.info(f"[ImpactAnalysis] Saving temp file 2: {temp_file_path_2}")
+        with temp_file_path_2.open("wb") as buffer:
+            shutil.copyfileobj(file2.file, buffer)
+        temp_paths_to_clean.append(temp_file_path_2) # Add to list for cleanup
+
+        # 4. Extract text from both files
+        logger.info(f"[ImpactAnalysis] Extracting text from {file1_name}")
+        extracted_text_1 = extract_text(str(temp_file_path_1))
+        if extracted_text_1 is None: extracted_text_1 = "" # Default to empty
+
+        logger.info(f"[ImpactAnalysis] Extracting text from {file2_name}")
+        extracted_text_2 = extract_text(str(temp_file_path_2))
+        if extracted_text_2 is None: extracted_text_2 = "" # Default to empty
+
+        # 5. Generate Unified Diff
+        logger.info(f"[ImpactAnalysis] Generating diff.")
+        lines1 = extracted_text_1.splitlines()
+        lines2 = extracted_text_2.splitlines()
+        from_file_name = file1_name if file1_name else "file1"
+        to_file_name = file2_name if file2_name else "file2"
+        diff_generator = difflib.unified_diff(lines1, lines2, fromfile=from_file_name, tofile=to_file_name, lineterm='\n')
+        unified_diff_str = "\n".join(diff_generator)
+        logger.info(f"[ImpactAnalysis] Generated unified diff (length: {len(unified_diff_str)}).")
+
+        if not unified_diff_str.strip():
+            logger.info(f"[ImpactAnalysis] No differences found.")
+            return DiffImpactAnalysisResponse(
+                perspective_filename=perspective_filename, 
+                analysis=[],
+                message="No textual differences found between the documents."
+            )
+
+        # 6. Prepare AI Prompt using a new Jinja template
+        try:
+            categories_definition = """
+            Categories:
+            - Beneficial: A change that clearly increases the control, protection, or rights of the party from the specified perspective ('{{ perspective_filename }}'). Examples: Gains rights, reduces obligations, adds favorable terms like 'sole discretion', 'reimbursed', 'prior approval'.
+            - Likely Neutral: Semantic changes, rephrasing, clarifications, correcting typos, or minor adjustments that don't significantly alter the substantive rights or obligations of '{{ perspective_filename }}'. **This includes filling in previously blank information (like names, dates, addresses) or making terms more specific, unless the specific information added is itself prejudicial.** State why it's likely neutral.
+            - Prejudicial: A change that clearly disadvantages '{{ perspective_filename }}' by **imposing substantive new obligations, removing significant rights, adding unfavorable terms, or introducing clear risk.** Examples: Other party gets 'sole discretion', 'unlimited liability', imposing indemnification, waiving rights, penalties. **Simply making a term specific (like filling in a blank) is NOT prejudicial unless the specific term itself creates a disadvantage.**
+            - Further Review Required: Changes that are ambiguous, complex, or whose impact depends heavily on context or external factors for '{{ perspective_filename }}'. Examples: 'notwithstanding', 'automatic renewal', 'binding arbitration'. Explain why review is needed.
+            """
+
+            # Output format example remains the same
+            output_format_example = """
+            Output Format Example (Respond ONLY with the JSON list, no other text):
+            [
+              {
+                "category": "Beneficial",
+                "explanation": "Explanation focusing on the impact to {{ perspective_filename }}.",
+                "change_summary": "Removed sentence X. Added sentence Y."
+              },
+              {
+                "category": "Prejudicial",
+                "explanation": "...",
+                "change_summary": "Changed deadline from '30 days' to '15 days' in section Z."
+              }
+            ]
+            """
+            # --- <<< END: UPDATED Example >>> ---
+            
+            template = jinja_env.get_template("diff_impact_prompt.jinja") 
+            prompt = template.render(
+                perspective_filename=perspective_filename,
+                filename1=from_file_name, 
+                filename2=to_file_name,   
+                unified_diff=unified_diff_str,
+                categories_definition=categories_definition, # Pass NEW definition
+                output_format_example=output_format_example # Pass existing example
+            )
+            logger.info(f"[ImpactAnalysis] Generated impact analysis prompt for AI.")
+        except Exception as template_e:
+            logger.error(f"[ImpactAnalysis] Failed render impact template: {template_e}", exc_info=True)
+            raise HTTPException(status_code=500, detail="Internal server error: Failed to prepare impact analysis prompt.")
+
+        # 7. Call AI Service
+        logger.info(f"[ImpactAnalysis] Sending request to AI for impact analysis.")
+        ai_response_raw = await generate_text_from_gemini(prompt) # Consider Gemini Pro 1.5 for complex analysis
+
+        if ai_response_raw.startswith("Error:"):
+            logger.error(f"[ImpactAnalysis] AI service error: {ai_response_raw}")
+            raise HTTPException(status_code=502, detail=f"AI service failed during impact analysis: {ai_response_raw}")
+        
+        # 8. Process and Validate AI Response
+        ai_response_json_str = ai_response_raw.strip()
+        # More robust cleaning for markdown code blocks
+        if ai_response_json_str.startswith("```json"):
+            ai_response_json_str = ai_response_json_str[7:]
+        elif ai_response_json_str.startswith("```"):
+             ai_response_json_str = ai_response_json_str[3:]
+        if ai_response_json_str.endswith("```"):
+            ai_response_json_str = ai_response_json_str[:-3]
+        ai_response_json_str = ai_response_json_str.strip()
+        
+        # Handle empty response after cleaning
+        if not ai_response_json_str:
+             logger.warning("[ImpactAnalysis] AI returned an empty response after cleaning.")
+             raise HTTPException(status_code=502, detail="AI returned an empty or invalid response for impact analysis.")
+
+        try:
+            ai_response_data = json.loads(ai_response_json_str)
+            if not isinstance(ai_response_data, list):
+                 # Attempt to handle if AI wraps list in a key like "analysis"
+                 if isinstance(ai_response_data, dict) and len(ai_response_data) == 1:
+                     key = list(ai_response_data.keys())[0]
+                     if isinstance(ai_response_data[key], list):
+                         logger.warning(f"[ImpactAnalysis] AI response was a dict, extracting list from key '{key}'.")
+                         ai_response_data = ai_response_data[key]
+                     else:
+                          raise ValueError(f"AI response is a dict, but value under key '{key}' is not a list.")
+                 else:
+                     raise ValueError(f"AI response is not a list as expected. Type: {type(ai_response_data)}")
+                 
+            # Validate each item in the list
+            validated_analysis: List[DiffImpactChange] = []
+            for item in ai_response_data:
+                 if isinstance(item, dict):
+                     try:
+                         # Ensure category is valid before creating model instance
+                         if item.get('category') not in ['Beneficial', 'Likely Neutral', 'Prejudicial', 'Further Review Required']:
+                             logger.warning(f"[ImpactAnalysis] Invalid category '{item.get('category')}' in item: {item}. Skipping.")
+                             continue # Skip item with invalid category
+                         validated_analysis.append(DiffImpactChange(**item))
+                     except Exception as item_val_err:
+                         logger.warning(f"[ImpactAnalysis] Validation failed for item: {item}. Error: {item_val_err}. Skipping.")
+                         # Optionally skip or add a default error item
+                 else:
+                     logger.warning(f"[ImpactAnalysis] Skipping non-dict item in AI response list: {item}")
+
+            logger.info(f"[ImpactAnalysis] Parsed/validated AI response. Found {len(validated_analysis)} changes.")
+            return DiffImpactAnalysisResponse(
+                perspective_filename=perspective_filename,
+                analysis=validated_analysis
+            )
+        except json.JSONDecodeError as json_e:
+             logger.error(f"[ImpactAnalysis] Failed decode JSON: {json_e}. Raw: {ai_response_json_str}", exc_info=True)
+             # Be more specific about the error
+             error_detail = f"AI response for impact analysis was not valid JSON. Error near character {json_e.pos}."
+             # Optionally include the problematic JSON string if safe
+             # error_detail += f" Response: {ai_response_json_str[:500]}..." 
+             raise HTTPException(status_code=502, detail=error_detail)
+        except ValueError as val_err: # Catch specific validation errors
+             logger.error(f"[ImpactAnalysis] Failed structure validation: {val_err}. Cleaned: {ai_response_json_str}", exc_info=True)
+             raise HTTPException(status_code=502, detail=f"AI impact analysis response structure invalid: {val_err}")
+        except Exception as e: # Catch other validation/parsing errors
+             logger.error(f"[ImpactAnalysis] Failed parse/validate AI response: {e}. Cleaned: {ai_response_json_str}", exc_info=True)
+             raise HTTPException(status_code=502, detail=f"AI impact analysis response failed validation: {e}")
+
+    except HTTPException as http_exc:
+        raise http_exc # Re-raise client/server errors
+    except Exception as e:
+        logger.error(f"[ImpactAnalysis] Unexpected error processing files: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred during impact analysis: {e}")
+    finally:
+        # 9. Clean up temporary files using the list
+        for temp_path in temp_paths_to_clean:
+            if temp_path and temp_path.exists():
+                try: 
+                    temp_path.unlink()
+                    logger.info(f"[ImpactAnalysis] Deleted temp file: {temp_path}")
+                except Exception as del_e: 
+                    logger.error(f"[ImpactAnalysis] Failed delete {temp_path}: {del_e}")
+        # Ensure file handles are closed even if errors occurred before await
+        if file1 and not file1.file._file.closed: # Check if underlying file is closed
+            await file1.close()
+        if file2 and not file2.file._file.closed:
+            await file2.close()
+            
+# --- <<< END: Diff Impact Analysis Endpoint >>> ---
 
 # --- Main execution ---
 if __name__ == "__main__":
