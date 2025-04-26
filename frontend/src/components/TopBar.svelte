@@ -1,10 +1,17 @@
 <script lang="ts">
-  import { Bell, HelpCircle, Settings } from 'lucide-svelte'; // Import Lucide icons
+  import { Bell, HelpCircle, Settings, LogOut } from 'lucide-svelte'; // Import Lucide icons and LogOut icon
+  import { createEventDispatcher } from 'svelte'; // Import event dispatcher
 
   // Define the view type directly or import from App.svelte if preferred
   type View = 'welcome' | 'analysis' | 'comparison' | 'summary' | 'help';
 
   export let currentView: View;
+
+  const dispatch = createEventDispatcher(); // Create dispatcher instance
+
+  function handleSignOut() {
+    dispatch('signOut');
+  }
 
   const viewTitles = {
     welcome: 'Dashboard', // Or maybe hide title on welcome?
@@ -43,6 +50,12 @@
        <button type="button" title="Settings" class="bg-neutral-white p-1.5 rounded-full text-neutral-dark hover:text-neutral-darkest focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-muted">
         <span class="sr-only">User Settings</span>
         <svelte:component this={Settings} class="h-5 w-5" strokeWidth={1.75} />
+      </button>
+
+      <!-- Sign Out Button -->
+      <button on:click={handleSignOut} type="button" title="Sign Out" class="bg-neutral-white p-1.5 rounded-full text-neutral-dark hover:text-neutral-darkest focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-muted">
+        <span class="sr-only">Sign Out</span>
+        <svelte:component this={LogOut} class="h-5 w-5" strokeWidth={1.75} />
       </button>
     </div>
   </div>
