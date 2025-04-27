@@ -10,6 +10,7 @@ export default defineConfig({
     host: '0.0.0.0', // Allow connections from Docker network
     port: 5173,      // Default Vite port
     strictPort: true, // Ensure this port is used
+    allowedHosts: ["accorda.kolvian.com"],
     hmr: {
         clientPort: 5173 // Ensure HMR connects correctly through Docker mapping
     },
