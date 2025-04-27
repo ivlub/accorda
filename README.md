@@ -59,6 +59,21 @@ The backend exposes the following primary API endpoints under the `/api/` prefix
 
 **Note:** For detailed request/response schemas and parameters, please refer to the Swagger documentation at `/docs`.
 
+## AI Contract Analysis Flow
+
+The core contract analysis process, typically triggered via the frontend, involves a sequence of calls to the backend API:
+
+1.  **Summary Generation (`/api/analyze/summary`):** The AI first generates a concise summary of the entire contract.
+2.  **General Requirements Check (`/api/analyze/check-requirements`):** The AI then checks the contract against a predefined set of general legal and structural requirements applicable to most contracts.
+3.  **Categorization & Category-Specific Check (`/api/analyze/categorize` & `/api/analyze/check-category-requirements`):**
+    *   The AI attempts to categorize the contract (e.g., NDA, Service Agreement).
+    *   Based on the identified category, the backend retrieves the corresponding compliance matrix from `backend/prompts/category_requirements_schemas.json`.
+    *   The AI analyzes the contract against this specific matrix, extracting clauses or noting missing items for each criterion.
+
+**Schema File (`category_requirements_schemas.json`):** This file defines the structured criteria (compliance matrix) for each supported contract category. It includes the specific points the AI should look for during the category-specific check.
+
+**Current Status:** As a proof of concept, only the "Non-Disclosure Agreement" category is currently defined and implemented within the `category_requirements_schemas.json` file. Integration of other categories is very straightforward - just add those to the JSON file following the existing structure.
+
 ## Development Notes
 
 *   **Backend:** Changes to Python files in the `/backend` directory trigger an automatic reload of the FastAPI server using `uvicorn --reload`.
