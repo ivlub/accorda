@@ -33,6 +33,7 @@
       <li>Upload the second contract document ('Contract B') using its uploader.</li>
       <li>Click the 'Compare Contracts' button to initiate the comparison process.</li>
       <li>The results will show a side-by-side view, highlighting matching clauses, differing clauses, and unique clauses present in only one document.</li>
+      <li>Furthermore, this feature will categorize the change as either a 'Beneficial Change,' 'Prejudicial Change,' or 'Further Review Required' This feature helps by offering a clear and structured way to evaluate changes, taking into account how the parties may adopt a defensive or offensive stance.</li> 
       <li>This is useful for comparing different versions of an agreement or standard templates against negotiated terms. You can export the comparison results as a PDF.</li>
     </ol>
   </section>

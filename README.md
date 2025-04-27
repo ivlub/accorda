@@ -59,6 +59,10 @@ The backend exposes the following primary API endpoints under the `/api/` prefix
 
 **Note:** For detailed request/response schemas and parameters, please refer to the Swagger documentation at `/docs`.
 
+## Data Handling & Privacy (GDPR Compliance)
+
+This application prioritizes data privacy. Uploaded documents are **not** stored permanently on our servers. They are processed solely in temporary memory or temporary files during the analysis or comparison task. Once the processing is complete and the results are returned to the user, these temporary files are immediately and securely deleted. This ensures that your sensitive contract data is not retained, aligning with GDPR principles.
+
 ## AI Contract Analysis Flow
 
 The core contract analysis process, typically triggered via the frontend, involves a sequence of calls to the backend API:
@@ -124,5 +128,6 @@ After performing a contract analysis using the `ContractAnalysis` component in t
 *   Implement more sophisticated analysis options (e.g., risk assessment).
 *   Refine the UI/UX based on user feedback.
 *   Integrate OCR for scanned documents
+*   Implement database for request history
 
 
