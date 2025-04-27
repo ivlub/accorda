@@ -4,7 +4,7 @@
   import Modal from './Modal.svelte'; // Import Modal component
 
   // Define the view type directly or import from App.svelte if preferred
-  type View = 'welcome' | 'analysis' | 'comparison' | 'summary' | 'help';
+  type View = 'welcome' | 'analysis' | 'comparison' | 'summary' | 'help' | 'settings';
 
   export let currentView: View;
 
@@ -33,7 +33,8 @@
     analysis: 'Contract Analysis',
     comparison: 'Contract Comparison',
     summary: 'Contract Summary',
-    help: 'Help & Tutorial' // Add title for help view
+    help: 'Help & Tutorial', // Add title for help view
+    settings: 'Settings' // <-- Add title for settings
   };
 
   $: title = viewTitles[currentView];
