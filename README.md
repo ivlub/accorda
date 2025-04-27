@@ -42,6 +42,23 @@ There are two ways to access the application:
     *   **API Documentation:**
         *   Swagger UI documentation for the backend API is available at: [http://localhost:8000/docs](http://localhost:8000/docs)
 
+## API Endpoint Overview
+
+The backend exposes the following primary API endpoints under the `/api/` prefix:
+
+*   `GET /hello`: Basic health check or root endpoint.
+*   `POST /generate`: General purpose AI text generation.
+*   `POST /extract_text`: Extracts text content from uploaded documents (e.g., PDFs).
+*   `POST /compare`: Compares two contracts and identifies differences.
+*   `POST /analyze/categorize`: Categorizes the type of contract.
+*   `POST /analyze/summary`: Generates a summary of a contract.
+*   `POST /analyze/check-requirements`: Checks a contract against general requirements.
+*   `POST /analyze/check-category-requirements`: Checks a contract against requirements specific to its category.
+*   `POST /explain-diff`: Explains the differences found between two contracts.
+*   `POST /analyze-diff-impact`: Analyzes the potential impact of the differences between two contracts.
+
+**Note:** For detailed request/response schemas and parameters, please refer to the Swagger documentation at `/docs`.
+
 ## Development Notes
 
 *   **Backend:** Changes to Python files in the `/backend` directory trigger an automatic reload of the FastAPI server using `uvicorn --reload`.
