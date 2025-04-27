@@ -607,7 +607,7 @@ async def check_contract_requirements(file: UploadFile = File(...), model: Optio
         ai_response_json_str = ai_response_json_str.replace(': maybe', ': "maybe"') 
 
         try:
-            ai_response_data = json.loads(ai_response_json_str)
+            ai_response_data = json.loads(ai_response_json_str, strict=False)
             validated_response = ContractRequirementsResponse(**ai_response_data)
             logger.info(f"[GeneralReq] Parsed/validated general AI response for {filename}")
 
@@ -721,7 +721,7 @@ async def check_category_requirements(file: UploadFile = File(...), model: Optio
         # Removed: ai_response_json_str = ai_response_json_str.replace(': maybe', ': "maybe"') 
 
         try:
-            ai_response_data = json.loads(ai_response_json_str)
+            ai_response_data = json.loads(ai_response_json_str, strict=False)
             if not isinstance(ai_response_data, dict):
                  raise ValueError("AI response is not a dict.")
             
@@ -1087,7 +1087,7 @@ async def analyze_diff_impact(
              raise HTTPException(status_code=502, detail="AI returned an empty or invalid response for impact analysis.")
 
         try:
-            ai_response_data = json.loads(ai_response_json_str)
+            ai_response_data = json.loads(ai_response_json_str, strict=False)
             if not isinstance(ai_response_data, list):
                  # Attempt to handle if AI wraps list in a key like "analysis"
                  if isinstance(ai_response_data, dict) and len(ai_response_data) == 1:

@@ -32,7 +32,7 @@
       },
       "parties_of_the_contract": {
         "status": "review_needed",
-        "value": "Disclosing Party: Innovate Corp., 123 Tech Lane, Silicon Valley, CA 94000, represented by Jane Doe, CEO.\nReceiving Party: ______________ [Name and Address Missing]",
+        "value": "Disclosing Party: Innovate Corp., 123 Tech Lane, Silicon Valley, CA 94000, represented by Jane Doe, CEO.\\nReceiving Party: ______________ [Name and Address Missing]",
         "location": "Parties Section, Page 1"
       },
       "definitions": {
@@ -104,6 +104,150 @@
          "status": "extracted",
          "value": "This Agreement shall be governed by and construed in accordance with the laws of the State of Delaware.",
          "location": "Section 12.1"
+       }
+    }
+  },
+  "For use of a tangible good": {
+    "criteria": [
+      {"id": "date_of_formation", "description": "Extract the effective date or date the agreement was formed."},
+      {"id": "jurisdiction", "description": "Extract the relevant jurisdiction or jurisdiction clause."},
+      {"id": "parties_of_the_contract", "description": "Extract the full names and addresses for all parties (e.g., Lessor/Owner and Lessee/User)."},
+      {"id": "definitions", "description": "Extract all the definitions mentioned in the Contract related to the good or agreement."},
+      {"id": "object_of_the_contract", "description": "Extract the specific tangible good being provided for use."},
+      {"id": "description_of_the_tangible_good", "description": "Extract the detailed description of the tangible good, including make, model, serial number, etc."},
+      {"id": "condition_of_the_good", "description": "Extract the description of the good's condition at the beginning of the agreement."},
+      {"id": "use_restrictions", "description": "Extract any restrictions on how the good can be used."},
+      {"id": "obligations_of_the_provider", "description": "Extract the obligations specifically placed upon the party providing the good (Lessor/Owner)."},
+      {"id": "obligations_of_the_user", "description": "Extract the obligations placed upon the party using the good (Lessee/User, e.g., payment, proper use, return)."},
+      {"id": "rights_of_the_provider", "description": "Extract the rights explicitly granted to or retained by the provider."},
+      {"id": "rights_of_the_user", "description": "Extract the rights explicitly granted to the user (e.g., right to quiet enjoyment)."},
+      {"id": "effect_clauses", "description": "Extract clauses defining the duration (term) and any conditions affecting the agreement's effect."},
+      {"id": "termination", "description": "Extract the conditions or process for terminating the agreement (e.g., notice period, reasons)."},
+      {"id": "rent_payment_terms", "description": "Extract the amount, frequency, and method of payment for using the good."},
+      {"id": "security_deposit", "description": "Extract details about the security deposit, if any (amount, conditions for return)."},
+      {"id": "maintenance_and_repairs", "description": "Extract who is responsible for maintenance and repairs of the good."},
+      {"id": "insurance", "description": "Extract any insurance requirements related to the good."},
+      {"id": "return_condition", "description": "Extract the required condition of the good upon return."},
+      {"id": "penalty_clauses", "description": "Extract any specific penalties mentioned for breach (e.g., late fees, damage charges)."},
+      {"id": "remedies", "description": "Extract clauses mentioning available remedies (e.g., repossession, legal action)."},
+      {"id": "alternative_dispute_resolution_clauses", "description": "Extract any clause related to Alternative Dispute Resolution."},
+      {"id": "governing_law_clauses", "description": "Extract the specific clause stating the governing law."}
+    ],
+    "output_format_example": {
+      "date_of_formation": {
+        "status": "extracted",
+        "value": "This Lease Agreement is entered into on March 15, 2024.",
+        "location": "Preamble, Page 1"
+      },
+      "jurisdiction": {
+        "status": "extracted",
+        "value": "This Agreement shall be governed by the laws of the State of California.",
+        "location": "Section 15. Governing Law"
+      },
+      "parties_of_the_contract": {
+        "status": "extracted",
+        "value": "Lessor: EquipRentals Inc., 456 Industrial Ave, Los Angeles, CA 90001. Lessee: Construct Co., 789 Building Site, Los Angeles, CA 90002.",
+        "location": "Parties Section, Page 1"
+      },
+      "definitions": {
+        "status": "extracted",
+        "value": "'Equipment' refers to one (1) Bulldozer, Model XYZ, Serial #12345.",
+        "location": "Section 1. Definitions"
+      },
+       "object_of_the_contract": {
+        "status": "extracted",
+        "value": "Lessor agrees to lease the Equipment to Lessee for the Term.",
+        "location": "Section 2. Lease Grant"
+       },
+      "description_of_the_tangible_good": {
+        "status": "extracted",
+        "value": "One (1) Bulldozer, Model XYZ, Serial #12345, yellow, year 2022.",
+        "location": "Section 1. Definitions / Exhibit A"
+      },
+      "condition_of_the_good": {
+        "status": "extracted",
+        "value": "The Equipment is provided in good working order and condition.",
+        "location": "Section 3. Condition"
+      },
+      "use_restrictions": {
+        "status": "extracted",
+        "value": "Lessee shall use the Equipment solely for construction purposes at the specified site and in accordance with the manufacturer's guidelines.",
+        "location": "Section 6. Use of Equipment"
+      },
+      "obligations_of_the_provider": {
+        "status": "extracted",
+        "value": "Lessor shall deliver the Equipment to the Lessee's site.",
+        "location": "Section 4. Delivery"
+      },
+      "obligations_of_the_user": {
+        "status": "extracted",
+        "value": "Lessee shall pay the Rent as specified, maintain the Equipment, and return it in the condition required.",
+        "location": "Section 5. Rent; Section 7. Maintenance; Section 9. Return"
+      },
+      "rights_of_the_provider": {
+        "status": "extracted",
+        "value": "Lessor has the right to inspect the Equipment upon reasonable notice.",
+        "location": "Section 8. Inspection"
+       },
+      "rights_of_the_user": {
+        "status": "extracted",
+        "value": "Lessee shall have quiet enjoyment of the Equipment during the Term, provided Lessee is not in default.",
+        "location": "Section 2. Lease Grant"
+       },
+      "effect_clauses": {
+        "status": "extracted",
+        "value": "The lease term is six (6) months, commencing on March 15, 2024.",
+        "location": "Section 2. Term"
+      },
+      "termination": {
+        "status": "extracted",
+        "value": "Either party may terminate with 30 days' written notice if the other party breaches a material term.",
+        "location": "Section 10. Default and Termination"
+       },
+       "rent_payment_terms": {
+         "status": "extracted",
+         "value": "$2,000 per month, due on the 1st of each month, payable via bank transfer.",
+         "location": "Section 5. Rent"
+       },
+       "security_deposit": {
+         "status": "extracted",
+         "value": "A security deposit of $1,000 is required, refundable within 15 days of return if Equipment is undamaged.",
+         "location": "Section 5. Security Deposit"
+       },
+       "maintenance_and_repairs": {
+         "status": "extracted",
+         "value": "Lessee is responsible for routine maintenance. Lessor is responsible for major repairs not caused by Lessee's negligence.",
+         "location": "Section 7. Maintenance"
+       },
+       "insurance": {
+         "status": "extracted",
+         "value": "Lessee shall maintain comprehensive liability insurance covering the Equipment for at least $1,000,000.",
+         "location": "Section 11. Insurance"
+       },
+       "return_condition": {
+         "status": "extracted",
+         "value": "Equipment must be returned in the same condition as received, normal wear and tear excepted.",
+         "location": "Section 9. Return"
+       },
+       "penalty_clauses": {
+        "status": "extracted",
+        "value": "A late fee of 5% of the monthly rent will be charged for payments received after the 5th day of the month.",
+        "location": "Section 5. Rent"
+      },
+       "remedies": {
+        "status": "extracted",
+        "value": "In case of default by Lessee, Lessor may repossess the Equipment and seek damages.",
+        "location": "Section 10. Remedies"
+       },
+       "alternative_dispute_resolution_clauses": {
+        "status": "missing",
+        "value": null,
+        "location": null
+      },
+       "governing_law_clause": {
+         "status": "extracted",
+         "value": "This Agreement shall be governed by the laws of the State of California.",
+         "location": "Section 15. Governing Law"
        }
     }
   }
