@@ -72,7 +72,7 @@
   let summaryError: string | null = null; // <<< New state for summary-specific errors
 
   // Define backend URL (adjust if necessary)
-  const API_BASE_URL = 'http://localhost:8000'; 
+  const API_BASE_URL = ''; // Use relative path for API calls
 
   function goToStep(step: 1 | 2 | 3) {
       currentStep = step;
