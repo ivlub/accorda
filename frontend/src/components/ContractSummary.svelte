@@ -52,7 +52,7 @@
     formData.append('file', selectedFile);
 
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000'; 
+      const apiUrl = 'http://accorda.kolvian.com:8000'; 
       const response = await fetch(`${apiUrl}/api/analyze/summary`, {
         method: 'POST',
         body: formData,
