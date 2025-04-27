@@ -53,4 +53,31 @@ There are two ways to access the application:
 2.  To remove the containers and associated networks/volumes, run:
     ```bash
     docker compose down
-    ``` 
+    ```
+
+## Frontend Structure & Components
+
+The frontend application, located in `/frontend`, is a Single Page Application (SPA) built with Svelte and TypeScript, using Vite for development and builds, and Tailwind CSS for styling.
+
+**Key Directories & Files:**
+
+*   **`frontend/src/`**: Core application code.
+    *   `main.ts`: Application entry point.
+    *   `App.svelte`: Root component orchestrating the UI.
+    *   `app.css`: Global styles.
+    *   `components/`: Contains reusable UI components:
+        *   `Login.svelte`: Handles user authentication.
+        *   `Sidebar.svelte`: Navigation panel, likely for selecting analysis types or managing documents.
+        *   `TopBar.svelte`: Application header, possibly including user info or global actions.
+        *   `Welcome.svelte`: Initial view or dashboard.
+        *   `ContractAnalysis.svelte`, `ContractComparison.svelte`, `ContractSummary.svelte`: Components dedicated to specific contract interaction features.
+        *   `SettingsView.svelte`: Interface for user/application settings.
+        *   `Modal.svelte`: Reusable modal dialog component.
+        *   `LoadingSpinner.svelte`: Visual indicator for ongoing operations.
+        *   `HelpTutorial.svelte`: Component providing guidance or tutorials.
+    *   `stores/`: Svelte stores for state management.
+        *   `settingsStore.ts`: Manages application-wide settings.
+*   **`frontend/public/`**: Static assets.
+*   **`frontend/index.html`**: Main HTML entry point.
+*   **Configuration Files**: `vite.config.ts`, `svelte.config.cjs`, `tailwind.config.cjs`, `tsconfig.json`, etc.
+*   **`frontend/Dockerfile`**: Defines the build process for the frontend container.
