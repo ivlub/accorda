@@ -69,7 +69,12 @@
        </button>
 
       <!-- User profile / settings button placeholder -->
-       <button type="button" title="Settings" class="bg-neutral-white p-1.5 rounded-full text-neutral-dark hover:text-neutral-darkest focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-muted">
+       <button 
+          type="button" 
+          title="Settings" 
+          class="bg-neutral-white p-1.5 rounded-full text-neutral-dark hover:text-neutral-darkest focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-muted"
+          on:click={() => dispatch('navigate', 'settings')}
+       >
         <span class="sr-only">User Settings</span>
         <svelte:component this={Settings} class="h-5 w-5" strokeWidth={1.75} />
       </button>

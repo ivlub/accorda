@@ -9,8 +9,9 @@
   import HelpTutorial from './components/HelpTutorial.svelte'; // Import the new help component
   import Login from './components/Login.svelte'; // Import the Login component
   import LoadingSpinner from './components/LoadingSpinner.svelte'; // Import the spinner
+  import SettingsView from './components/SettingsView.svelte'; // Import the Settings component
 
-  type View = 'welcome' | 'analysis' | 'comparison' | 'summary' | 'help'; // Add 'help' view
+  type View = 'welcome' | 'analysis' | 'comparison' | 'summary' | 'help' | 'settings'; // Add 'settings' view
   let currentView: View = 'welcome';
   let isLoggedIn = false; // Start as not logged in
   let isLoadingAfterLogin = false; // Added loading state
@@ -115,6 +116,8 @@
                <div class="p-6 md:p-10"> <ContractSummary /> </div>
             {:else if currentView === 'help'}
                <div class="p-6 md:p-10"> <HelpTutorial /> </div>
+            {:else if currentView === 'settings'}
+               <div class="p-6 md:p-10"> <SettingsView /> </div>
             {/if}
           </div>
         {/key}

@@ -1,6 +1,8 @@
 <script lang="ts">
   import { UploadCloud, FileText, Loader2, AlertTriangle } from 'lucide-svelte';
   import { fade } from 'svelte/transition';
+  import { selectedAiModel } from '../stores/settingsStore';
+  import { get } from 'svelte/store';
 
   let selectedFile: File | null = null;
   let fileName: string | null = null;
@@ -48,8 +50,12 @@
     summaryResult = null;
     errorMessage = null;
 
+    const currentAiModel = get(selectedAiModel);
+    console.log("[Summary] Using AI Model:", currentAiModel);
+
     const formData = new FormData();
     formData.append('file', selectedFile);
+    formData.append('model', currentAiModel);
 
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000'; 

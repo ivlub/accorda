@@ -6,6 +6,8 @@
   import * as Diff2Html from 'diff2html';
   import 'diff2html/bundles/css/diff2html.min.css';
   import jsPDF from 'jspdf';
+  import { selectedAiModel } from '../stores/settingsStore';
+  import { get } from 'svelte/store';
 
   let uploadedFile1: File | null = null;
   let uploadedFile1Name: string | null = null;
@@ -65,10 +67,13 @@
       diffExplanation = null;
       explanationErrorMessage = null;
       console.log("Fetching diff explanation...");
+      const currentAiModel = get(selectedAiModel);
+      console.log("[ExplainDiff] Using AI Model:", currentAiModel);
 
       const formData = new FormData();
       formData.append('file1', file1);
       formData.append('file2', file2);
+      formData.append('model', currentAiModel);
 
       try {
           const response = await fetch('/api/explain-diff', {
@@ -113,12 +118,15 @@
       impactAnalysisResult = null;
       impactAnalysisErrorMessage = null;
       console.log(`Fetching diff impact analysis from perspective of: ${selectedPerspective === 'file1' ? uploadedFile1Name : uploadedFile2Name}`);
+      const currentAiModel = get(selectedAiModel);
+      console.log("[ImpactAnalysis] Using AI Model:", currentAiModel);
 
       const formData = new FormData();
       formData.append('file1', uploadedFile1);
       formData.append('file2', uploadedFile2);
       const perspectiveFile = selectedPerspective === 'file1' ? uploadedFile1Name : uploadedFile2Name;
       formData.append('perspective_filename', perspectiveFile); 
+      formData.append('model', currentAiModel);
 
       try {
           const response = await fetch('/api/analyze-diff-impact', {

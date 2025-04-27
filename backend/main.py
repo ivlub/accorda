@@ -287,7 +287,7 @@ async def compare_contracts(file1: UploadFile = File(...), file2: UploadFile = F
         
 # --- Internal Helper Functions ---
 
-async def _get_contract_category(document_text: str, filename: str) -> str:
+async def _get_contract_category(document_text: str, filename: str, model: Optional[str] = None) -> str:
     """Internal helper to get contract category using AI."""
     if not jinja_env:
         logger.error(f"[_get_contract_category] Jinja environment not loaded for {filename}")
@@ -311,8 +311,8 @@ async def _get_contract_category(document_text: str, filename: str) -> str:
         raise HTTPException(status_code=500, detail="Internal server error: Failed to prepare category prompt.")
 
     # Call the AI service
-    logger.info(f"[_get_contract_category] Sending request to AI for {filename}")
-    ai_response_raw = await generate_text_from_gemini(prompt)
+    logger.info(f"[_get_contract_category] Sending request to AI for {filename} using model: {model or 'default'}")
+    ai_response_raw = await generate_text_from_gemini(prompt, model_name=model)
     
     if ai_response_raw.startswith("Error:"):
         logger.error(f"[_get_contract_category] AI service returned an error for {filename}: {ai_response_raw}")
@@ -392,7 +392,7 @@ async def categorize_contract(file: UploadFile = File(...)):
 # --- New Summary Endpoint --- 
 
 @app.post("/api/analyze/summary")
-async def summarize_contract(file: UploadFile = File(...)):
+async def summarize_contract(file: UploadFile = File(...), model: Optional[str] = Form(None)):
     """Receives a contract file, extracts text, asks AI to summarize it, and returns the summary."""
     
     if not jinja_env:
@@ -440,8 +440,8 @@ async def summarize_contract(file: UploadFile = File(...)):
             raise HTTPException(status_code=500, detail="Internal server error: Failed to prepare analysis prompt.")
 
         # 4. Call the AI service
-        logger.info(f"[Summary] Sending request to AI for {filename}")
-        ai_response_raw = await generate_text_from_gemini(prompt) # Consider using a specific model if needed
+        logger.info(f"[Summary] Sending request to AI for {filename} using model: {model or 'default'}")
+        ai_response_raw = await generate_text_from_gemini(prompt, model_name=model)
         
         if ai_response_raw.startswith("Error:"):
             logger.error(f"[Summary] AI service returned an error for {filename}: {ai_response_raw}")
@@ -536,7 +536,7 @@ class CategoryRequirementsResponse(BaseModel):
 # --- API Endpoints ---
 
 @app.post("/api/analyze/check-requirements", response_model=ContractRequirementsResponse)
-async def check_contract_requirements(file: UploadFile = File(...)):
+async def check_contract_requirements(file: UploadFile = File(...), model: Optional[str] = Form(None)):
     """
     Receives a contract file, extracts text, asks AI to check GENERAL requirements 
     based on the predefined schema, and returns the structured result.
@@ -590,7 +590,8 @@ async def check_contract_requirements(file: UploadFile = File(...)):
             raise HTTPException(status_code=500, detail="Failed to prepare general analysis prompt.")
 
         # 3. Call AI
-        ai_response_raw = await generate_text_from_gemini(prompt)
+        logger.info(f"[GeneralReq] Sending request to AI for {filename} using model: {model or 'default'}")
+        ai_response_raw = await generate_text_from_gemini(prompt, model_name=model)
         if ai_response_raw.startswith("Error:"):
             raise HTTPException(status_code=502, detail=f"AI service failed (general): {ai_response_raw}")
 
@@ -633,7 +634,7 @@ async def check_contract_requirements(file: UploadFile = File(...)):
         if file: await file.close()
 
 @app.post("/api/analyze/check-category-requirements", response_model=CategoryRequirementsResponse)
-async def check_category_requirements(file: UploadFile = File(...)):
+async def check_category_requirements(file: UploadFile = File(...), model: Optional[str] = Form(None)):
     """
     Receives a contract file, determines its category, finds the category-specific 
     schema (focused on EXTRACTION), asks AI to extract information based on THAT schema, 
@@ -667,7 +668,7 @@ async def check_category_requirements(file: UploadFile = File(...)):
         logger.info(f"[CatReq] Extracted text from {filename}. Length: {len(extracted_content)}")
 
         # 2. Determine Contract Category (using internal helper)
-        category = await _get_contract_category(extracted_content, filename)
+        category = await _get_contract_category(extracted_content, filename, model=model)
 
         # 3. Find Category-Specific Schema
         category_schema = CATEGORY_REQUIREMENTS_SCHEMAS.get(category)
@@ -702,7 +703,8 @@ async def check_category_requirements(file: UploadFile = File(...)):
 
         # 5. Call the AI service
         # Consider using a model better suited for extraction if needed, e.g., Gemini Pro 1.5
-        ai_response_raw = await generate_text_from_gemini(prompt)
+        logger.info(f"[CatReq] Sending request to AI for {filename} using model: {model or 'default'}")
+        ai_response_raw = await generate_text_from_gemini(prompt, model_name=model)
         if ai_response_raw.startswith("Error:"):
             raise HTTPException(status_code=502, detail=f"AI service failed (category extraction): {ai_response_raw}")
 
@@ -778,7 +780,11 @@ async def check_category_requirements(file: UploadFile = File(...)):
 # --- Diff Explanation Endpoint ---
 
 @app.post("/api/explain-diff", response_model=DiffExplanationResponse)
-async def explain_contract_diff(file1: UploadFile = File(...), file2: UploadFile = File(...)):
+async def explain_contract_diff(
+    file1: UploadFile = File(...), 
+    file2: UploadFile = File(...),
+    model: Optional[str] = Form(None)
+):
     """
     Receives two contract files, generates a diff, asks AI to explain the diff,
     and returns the explanation.
@@ -860,8 +866,8 @@ async def explain_contract_diff(file1: UploadFile = File(...), file2: UploadFile
                 raise HTTPException(status_code=500, detail="Internal server error: Failed to prepare explanation prompt.")
 
             # 7. Call AI Service
-            logger.info(f"[ExplainDiff] Sending request to AI for explanation.")
-            ai_response_raw = await generate_text_from_gemini(prompt)
+            logger.info(f"[ExplainDiff] Sending request to AI for explanation using model: {model or 'default'}.")
+            ai_response_raw = await generate_text_from_gemini(prompt, model_name=model)
 
             if ai_response_raw.startswith("Error:"):
                 logger.error(f"[ExplainDiff] AI service returned an error: {ai_response_raw}")
@@ -932,7 +938,8 @@ if __name__ == "__main__":
 async def analyze_diff_impact(
     perspective_filename: str = Form(...), 
     file1: UploadFile = File(...), 
-    file2: UploadFile = File(...)
+    file2: UploadFile = File(...),
+    model: Optional[str] = Form(None)
 ):
     """
     Receives two contract files and a perspective filename (via form data),
@@ -1056,8 +1063,8 @@ async def analyze_diff_impact(
             raise HTTPException(status_code=500, detail="Internal server error: Failed to prepare impact analysis prompt.")
 
         # 7. Call AI Service
-        logger.info(f"[ImpactAnalysis] Sending request to AI for impact analysis.")
-        ai_response_raw = await generate_text_from_gemini(prompt) # Consider Gemini Pro 1.5 for complex analysis
+        logger.info(f"[ImpactAnalysis] Sending request to AI for impact analysis using model: {model or 'default'}.")
+        ai_response_raw = await generate_text_from_gemini(prompt, model_name=model)
 
         if ai_response_raw.startswith("Error:"):
             logger.error(f"[ImpactAnalysis] AI service error: {ai_response_raw}")

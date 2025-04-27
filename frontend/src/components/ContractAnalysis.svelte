@@ -6,6 +6,8 @@
       Download
   } from 'lucide-svelte';
   import jsPDF from 'jspdf';
+  import { selectedAiModel } from '../stores/settingsStore';
+  import { get } from 'svelte/store';
 
   // Define the structure of the expected response
   interface RequirementCheckResult {
@@ -113,6 +115,10 @@
         return;
     }
     
+    // Get the currently selected model
+    const currentAiModel = get(selectedAiModel);
+    console.log("[Analysis] Using AI Model:", currentAiModel);
+
     // Reset state for new analysis
     analysisError = null;
     summaryError = null; // <<< Reset summary error
@@ -129,12 +135,15 @@
     // Use separate FormData for each request
     const formDataSummary = new FormData();
     formDataSummary.append('file', uploadedFile);
+    formDataSummary.append('model', currentAiModel);
     
     const formDataGeneral = new FormData();
     formDataGeneral.append('file', uploadedFile);
+    formDataGeneral.append('model', currentAiModel);
 
     const formDataCat = new FormData(); 
     formDataCat.append('file', uploadedFile);
+    formDataCat.append('model', currentAiModel);
 
 
     // --- Call 1: Summary ---

@@ -2,7 +2,7 @@
   import { Home, FileText, GitCompareArrows, Settings, Brain, ClipboardList, HelpCircle } from 'lucide-svelte'; // Import Lucide icons and Brain icon + ClipboardList + HelpCircle
 
   // Define the view type directly or import from App.svelte if preferred
-  type View = 'welcome' | 'analysis' | 'comparison' | 'summary' | 'help';
+  type View = 'welcome' | 'analysis' | 'comparison' | 'summary' | 'help' | 'settings';
 
   export let currentView: View;
   export let navigate: (view: View) => void;
@@ -147,6 +147,23 @@
              <svelte:component this={HelpCircle} class="mr-4 flex-shrink-0 h-6 w-6" strokeWidth={1.75} />
              Help / Tutorial
            </button>
+
+           <!-- Settings Link -->
+           <button 
+             on:click={() => navigate('settings')} 
+             class="w-full flex items-center px-2 py-2 text-sm leading-6 font-medium rounded-md group transition ease-in-out duration-150"
+             class:text-neutral-white={currentView === 'settings'}
+             class:bg-neutral-lightest={currentView === 'settings'}
+             class:bg-opacity-10={currentView === 'settings'} 
+             class:text-neutral-light={currentView !== 'settings'}
+             class:hover:text-neutral-white={currentView !== 'settings'}
+             class:hover:bg-neutral-lightest={currentView !== 'settings'}
+             class:hover:bg-opacity-5={currentView !== 'settings'}
+             aria-current={currentView === 'settings' ? 'page' : undefined}
+           >
+             <svelte:component this={Settings} class="mr-4 flex-shrink-0 h-6 w-6" strokeWidth={1.75} />
+             Settings
+           </button>
         </div>
         <!-- Could add other sections like Settings, Account etc. here -->
       </nav>
@@ -163,7 +180,12 @@
               <p class="text-xs text-neutral-light truncate">{userEmail}</p>
             </div>
              <!-- Optional: Settings/Logout Button -->
-             <button type="button" class="ml-auto flex-shrink-0 bg-brand-dark p-1 rounded-full text-neutral-light hover:text-neutral-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-brand-dark focus:ring-white">
+             <button 
+               type="button" 
+               class="ml-auto flex-shrink-0 bg-brand-dark p-1 rounded-full text-neutral-light hover:text-neutral-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-brand-dark focus:ring-white"
+               on:click={() => navigate('settings')} 
+               aria-label="Go to settings"
+             >
                 <span class="sr-only">User settings</span>
                  <!-- Icon: Cog -->
                 <svelte:component this={Settings} class="h-5 w-5" strokeWidth={1.75} />
