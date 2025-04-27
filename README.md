@@ -15,7 +15,7 @@ There are two ways to access the application:
 
 1.  **Hosted Version (Recommended):**
     *   Access the live application at: [https://accorda.kolvian.com](https://accorda.kolvian.com)
-    *   Please contact the development team for login credentials.
+    *   Please contact the development team for login credentials. (ivlub on Discord/ivan.lubyako@gmail.com)
 
 2.  **Local Development Setup:**
 
