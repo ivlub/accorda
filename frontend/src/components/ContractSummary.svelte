@@ -52,7 +52,7 @@
     formData.append('file', selectedFile);
 
     try {
-      const apiUrl = 'http://accorda.kolvian.com:8000'; 
+      const apiUrl = 'https://accorda.kolvian.com:8000'; 
       const response = await fetch(`${apiUrl}/api/analyze/summary`, {
         method: 'POST',
         body: formData,
