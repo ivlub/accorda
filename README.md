@@ -1,6 +1,6 @@
 # Accorda Legal Assistant Backend & Frontend
 
-This project contains the backend API and the frontend web application for the Accorda AI coding assistant.
+This project contains the backend API and the frontend web application for the Accorda AI legal assistant.
 
 ## Tech Stack
 
