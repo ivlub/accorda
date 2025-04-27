@@ -113,3 +113,16 @@ The frontend application, located in `/frontend`, is a Single Page Application (
 *   **`frontend/index.html`**: Main HTML entry point.
 *   **Configuration Files**: `vite.config.ts`, `svelte.config.cjs`, `tailwind.config.cjs`, `tsconfig.json`, etc.
 *   **`frontend/Dockerfile`**: Defines the build process for the frontend container.
+
+## Exporting Results
+
+After performing a contract analysis using the `ContractAnalysis` component in the frontend, the generated results (including the summary, general requirements check, and category-specific analysis) can be exported to a professionally formatted PDF document. This functionality is handled within the `ContractAnalysis.svelte` component itself, using the `jsPDF` library. Same applies for the ContractComparison component too.
+
+## Future Enhancements
+
+*   Expand the number of supported contract categories in `category_requirements_schemas.json`.
+*   Implement more sophisticated analysis options (e.g., risk assessment).
+*   Refine the UI/UX based on user feedback.
+*   Integrate OCR for scanned documents
+
+
