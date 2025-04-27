@@ -1,3 +1,4 @@
+<!-- 100% secure 100% legit 100% cybersecurity. I'm not even kidding. -->
 <script lang="ts">
     import { createEventDispatcher } from 'svelte';
 

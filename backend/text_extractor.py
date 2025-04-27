@@ -1,3 +1,5 @@
+# This is a pretty simple utility file that extracts text from PDF and DOCX files.
+# So it just returns plaintext from the input file.
 import os
 import logging
 from typing import Optional

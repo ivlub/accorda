@@ -39,6 +39,8 @@
   let selectedAffectedParties: string[] = [];
   const allAffectedParties = ['Disclosing Party', 'Receiving Party', 'Both Parties', 'Neither Party'];
 
+
+  // This is the function that handles the file selection. It's pretty simple.
   function handleFileSelect(event: Event, fileNumber: 1 | 2) {
       const target = event.target as HTMLInputElement;
       if (target.files && target.files.length > 0) {
@@ -59,7 +61,7 @@
            selectedPerspective = null; impactAnalysisResult = null; impactAnalysisErrorMessage = null;
       }
   }
-
+//Here we call the get diff endpoint.
   async function getDiffExplanation(file1: File, file2: File) {
       if (!file1 || !file2) return;
 
@@ -273,6 +275,7 @@
       }
   }
 
+  // Once again pdf stuff. Hate that stuff. 
   async function exportToPdf() {
     console.log("Exporting comparison PDF...");
 
@@ -370,7 +373,7 @@
           doc.setFont(FONT, 'normal');
       };
       
-      // --- Refined Text Adding Helper ---
+      //  Text Adding Helper. Now that I think of it I could have made a utility file to reuse in the tabs. too late. duplicating logic. yay
       const addFormattedText = (text: string | string[], options: { 
           x?: number, 
           size?: number; 
@@ -468,7 +471,7 @@
     display: none !important;
   }
 
-  /* Hide the @@ hunk header lines - trying more specific selector */
+  /* Hide the @@ hunk header lines - trying more specific selector. DOESNT WORK */ 
   .diff-container :global(table.d2h-diff-table > tbody.d2h-diff-tbody > tr > td.d2h-hunk-header) {
       display: none !important;
   }

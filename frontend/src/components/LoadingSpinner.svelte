@@ -1,3 +1,4 @@
+<!-- Spinner go brrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr -->
 <div aria-label="Loading..." role="status" class="flex items-center justify-center w-full h-full">
     <svg class="h-12 w-12 animate-spin stroke-brand-dark" viewBox="0 0 256 256">
         <line x1="128" y1="32" x2="128" y2="64" stroke-linecap="round" stroke-linejoin="round" stroke-width="24"></line>

@@ -1,3 +1,4 @@
+<!-- More of like an easter egg type of feature. Hopefully someone notices it. -->
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import { fade } from 'svelte/transition';

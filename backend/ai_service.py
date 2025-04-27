@@ -1,3 +1,4 @@
+# This is a utility file used to call the Google Gemini API.
 import os
 import google.generativeai as genai
 import logging
@@ -20,6 +21,7 @@ else:
         logger.error(f"Error configuring Google Generative AI: {e}")
 
 # TODO: evaluate which model to use. gemini 2.5 pro is more accurate but slower. 1.5 flash is faster but less accurate.
+# TODO is done. We have a settting for model choice. But if it somehow fails, it defaults to this one.
 DEFAULT_MODEL = 'gemini-1.5-flash'
 # DEFAULT_MODEL = 'gemini-2.5-pro-exp-03-25'    
 
@@ -55,7 +57,6 @@ async def generate_text_from_gemini(prompt: str, model_name: str = DEFAULT_MODEL
 
         if response.candidates[0].finish_reason != 'STOP':
              logger.warning(f"Gemini generation finished with reason: {response.candidates[0].finish_reason}")
-             # You might want to handle different finish reasons (e.g., SAFETY)
 
         logger.info("Successfully received response from Gemini API.")
         return response.text

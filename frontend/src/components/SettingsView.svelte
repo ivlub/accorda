@@ -1,3 +1,4 @@
+<!-- I was initially planning on adding more settings. Didn't. It's 6:30am. -->
 <script lang="ts">
   import { selectedAiModel, type AiModel } from '../stores/settingsStore';
 

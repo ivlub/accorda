@@ -1,3 +1,6 @@
+# This file defines all endpoints and handles all requests from the frontend.
+# It also contains the logic for the AI service.
+
 from fastapi import FastAPI, HTTPException, File, UploadFile, Response, Form
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -30,7 +33,7 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 TEMPLATE_DIR = Path("/app/templates") # Assuming templates are at /app/templates in container
 PROMPT_DIR = Path("/app/prompts") # Define prompt directory
 
-# Combine template and prompt directories for Jinja
+# Combine template and prompt directories for Jinja DOn't ask me why we have two. My brain malfunctioned. It should be one repository. There is no difference. My apologies.
 LOADER_DIRS = []
 if TEMPLATE_DIR.is_dir():
     LOADER_DIRS.append(str(TEMPLATE_DIR))
@@ -43,6 +46,7 @@ else:
     logger.warning(f"Prompt directory not found: {PROMPT_DIR}")
 
 # Setup Jinja2 environment if at least one directory exists
+# Jinja Ninja
 if LOADER_DIRS:
     jinja_env = Environment(
         loader=FileSystemLoader(LOADER_DIRS), # Load from multiple directories
@@ -54,7 +58,7 @@ else:
     logger.error("Neither template nor prompt directories found. Jinja environment not loaded.")
 
 # Define contract categories
-# TODO: Consider moving this to a config file or database
+# TODO: Consider moving this to a config file or database. Actually no, I like them here. 
 CONTRACT_CATEGORIES = [
     "Sale and purchase",
     "Service provision",
@@ -82,7 +86,7 @@ CONTRACT_CATEGORIES = [
     "Intellectual Property Agreement",
 ]
 
-# Allow CORS for frontend development
+# Allow CORS for frontend development. I hate CORS. Always acting up.
 origins = [
     "http://localhost",
     "http://localhost:5173",
@@ -108,7 +112,7 @@ async def read_root():
 
 class AIPrompt(BaseModel):
     prompt: str
-    model: str | None = None # Optional: specify a model like 'gemini-pro'
+    model: str | None = None # Optional: specify a model like 'gemini-pro' . This gets taken from the settings.
 
 @app.post("/api/generate")
 async def generate_ai_text(request: AIPrompt):
@@ -154,7 +158,8 @@ async def handle_text_extraction(file: UploadFile = File(...) ):
     temp_file_path = UPLOAD_DIR / filename 
     # Warning: This simple naming can cause conflicts if multiple users upload files
     # with the same name concurrently. A better approach would use unique IDs (e.g., uuid).
-    
+    # I'm not sure if this is a problem.
+
     logger.info(f"Receiving file: {filename}. Saving temporarily to {temp_file_path}")
 
     try:
@@ -533,7 +538,6 @@ class CategoryRequirementsResponse(BaseModel):
     analysis: Dict[str, CategoryExtractionResult] | None = None 
     message: str | None = None 
 
-# --- API Endpoints ---
 
 @app.post("/api/analyze/check-requirements", response_model=ContractRequirementsResponse)
 async def check_contract_requirements(file: UploadFile = File(...), model: Optional[str] = Form(None)):
@@ -934,6 +938,7 @@ if __name__ == "__main__":
         
     uvicorn.run(app, host=host, port=port) 
 
+# Why is this endpoint all the way down here? Only god knows. But it's not my fault.
 @app.post("/api/analyze-diff-impact", response_model=DiffImpactAnalysisResponse)
 async def analyze_diff_impact(
     perspective_filename: str = Form(...), 
@@ -1155,8 +1160,6 @@ async def analyze_diff_impact(
         if file2 and not file2.file._file.closed:
             await file2.close()
             
-# --- <<< END: Diff Impact Analysis Endpoint >>> ---
-
 # --- Main execution ---
 if __name__ == "__main__":
     # Determine host based on environment (e.g., Docker container vs local)

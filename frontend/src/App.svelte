@@ -35,11 +35,12 @@
   function handleLoginAttempt(event: CustomEvent<{ username: string; password: string}>) { // Explicitly type event detail
     const { username, password } = event.detail;
     // Define user data with type annotation
+    // Cybersecurity guys. Please close your eyes. This is a demo. Don't worry. I wouldn't do it like this in production. 
     const users: Record<string, UserData> = {
       'sara.mendes': { password: 'blackcat123', email: 'sara.mendes@accorda.legal', name: 'Sara Mendes' },
-      'eltemate': { password: 'verysecurepassword', email: 'eltemate@accorda.legal', name: 'Eltemate admin' } // Added another user example
+      'eltemate': { password: 'verysecurepassword', email: 'eltemate@accorda.legal', name: 'Eltemate admin' } 
     };
-
+    // password security one on one
     const user = users[username]; // Get user data
 
     if (user && user.password === password) {
@@ -49,6 +50,7 @@
       loggedInUserEmail = user.email; // Set email
 
       // Wait for a bit before showing the app
+      // Faking a delay so that the login screen feels real.
       setTimeout(() => {
         isLoggedIn = true;
         isLoadingAfterLogin = false; // Stop loading
@@ -76,7 +78,8 @@
     }, 500); // 0.5 second delay
   }
 
-  // Could add logic here later to hide sidebar on welcome screen if desired
+  // Could add logic here later to hide sidebar on welcome screen if desired. 
+  // Not desired.
 
 </script>
 
