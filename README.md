@@ -1,49 +1,56 @@
-# FastAPI + Svelte + Docker Sample Project
+# Accorda AI Coding Assistant Backend & Frontend
 
-This project sets up a simple web application using FastAPI for the backend and Svelte with Tailwind CSS for the frontend, all containerized with Docker.
+This project contains the backend API and the frontend web application for the Accorda AI coding assistant.
 
-## Features
+## Tech Stack
 
-*   **FastAPI Backend:** A simple Python backend serving a `/api/hello` endpoint.
-*   **Svelte Frontend:** A basic Svelte app (using TypeScript) that fetches data from the backend.
-*   **Tailwind CSS:** Utility-first CSS framework for styling.
-*   **Docker:** Containerization for both frontend and backend services.
-*   **Docker Compose:** Orchestrates the services for easy setup.
-*   **Live Reload:** Changes in both backend (Python) and frontend (Svelte/TS/CSS) code trigger automatic reloading in the running containers.
+*   **Containerization:** Docker, Docker Compose
+*   **Backend:** Python, FastAPI
+*   **Frontend:** Svelte, Vite, Tailwind CSS
+*   **AI:** Google Gemini API
 
-## Prerequisites
+## Running the Project
 
-*   Docker
-*   Docker Compose (usually included with Docker Desktop)
+There are two ways to access the application:
 
-## Getting Started
+1.  **Hosted Version (Recommended):**
+    *   Access the live application at: [https://accorda.kolvian.com](https://accorda.kolvian.com)
+    *   Please contact the development team for login credentials.
 
-1.  **Clone the repository (or ensure you have all the generated files).**
+2.  **Local Development Setup:**
 
-2.  **Run Docker Compose:**
+    *   **Prerequisites:**
+        *   Docker
+        *   Docker Compose (v2)
+    *   **Environment Setup:**
+        *   Create a `.env` file in the project root directory (where `docker-compose.yml` is located).
+        *   Add the following line to the `.env` file, replacing `XXXX` with your actual key:
+            ```
+            GOOGLE_API_KEY=XXXX
+            ```
+        *   You can obtain a Google API key from the [Google AI Studio](https://aistudio.google.com/app/apikey).
+    *   **Build and Run:**
+        *   Open your terminal in the project's root directory.
+        *   Run the command:
+            ```bash
+            docker compose up --build
+            ```
+        *   The `--build` flag is crucial for the first run or after dependency changes. Subsequent runs can use `docker compose up`.
+    *   **Accessing Local Services:**
+        *   **Frontend:** [http://localhost:5173](http://localhost:5173)
+        *   **Backend:** [http://localhost:8000](http://localhost:8000)
+    *   **API Documentation:**
+        *   Swagger UI documentation for the backend API is available at: [http://localhost:8000/docs](http://localhost:8000/docs)
 
-    Open your terminal in the project's root directory (where `docker-compose.yml` is located) and run:
+## Development Notes
 
+*   **Backend:** Changes to Python files in the `/backend` directory trigger an automatic reload of the FastAPI server using `uvicorn --reload`.
+*   **Frontend:** Changes to Svelte/TS/CSS files in the `/frontend/src` directory trigger Vite's Hot Module Replacement (HMR) for instant updates in the browser.
+
+## Stopping the Local Application
+
+1.  Press `Ctrl+C` in the terminal where `docker compose up` is running.
+2.  To remove the containers and associated networks/volumes, run:
     ```bash
-    docker compose up --build
-    ```
-
-    The `--build` flag ensures the images are built (or rebuilt if necessary). The first time you run this, it might take a few minutes to download the base images and install dependencies.
-
-3.  **Access the application:**
-
-    *   The **Frontend** (Svelte App) will be available at: [http://localhost:5173](http://localhost:5173)
-    *   The **Backend** (FastAPI) API endpoint `/api/hello` can be accessed directly or through the frontend proxy. The raw API docs (if needed) might be accessible at [http://localhost:8000/docs](http://localhost:8000/docs), although CORS might block direct browser access depending on your setup.
-
-## Development
-
-*   **Backend:** Edit files in the `/backend` directory. `watchfiles` (run via the `CMD` in `backend/Dockerfile`) monitors for changes and restarts the `uvicorn` server automatically.
-*   **Frontend:** Edit files in the `/frontend/src` directory. Vite's HMR (Hot Module Replacement) will update the frontend in your browser automatically without a full page reload.
-
-## Stopping the Application
-
-Press `Ctrl+C` in the terminal where `docker compose up` is running. To remove the containers, you can run:
-
-```bash
-docker compose down
-``` 
+    docker compose down
+    ``` 
