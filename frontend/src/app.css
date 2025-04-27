@@ -1,3 +1,15 @@
 @tailwind base;
 @tailwind components;
-@tailwind utilities; 
+@tailwind utilities;
+
+html, body {
+  height: 100%;
+  overflow: hidden; /* Prevents scrolling on the body itself */
+}
+
+body {
+  /* Optional: If you need scrolling within the body,
+     remove overflow: hidden above and use overflow-y: auto here,
+     but ensure your main app container handles its own scrolling. */
+  position: relative; /* Often helps with positioning contexts */
+} 

@@ -779,9 +779,7 @@
           {#if isExplanationOpen}
             <div class="section-content" id="explanation-content">
               {#key diffExplanation || isExplaining || explanationErrorMessage}
-                  <div class="text-sm text-neutral-darkest space-y-2" 
-                       in:fade={{ duration: 200 }} 
-                       out:fade={{ duration: 150 }}>
+                  <div class="text-sm text-neutral-darkest space-y-2">
                       {#if isExplaining}
                           <div class="flex items-center text-neutral-dark">
                               <svelte:component this={Loader2} class="animate-spin h-4 w-4 mr-2 text-brand-muted" />
@@ -822,19 +820,19 @@
                   <label class="block text-sm font-medium text-neutral-dark mb-2">Analyze impact from the perspective of:</label>
                   <div>
                      <input type="radio" id="perspective-file1" name="perspective" value="file1" bind:group={selectedPerspective} 
-                             on:change={getDiffImpactAnalysis} 
-                             disabled={isAnalyzingImpact || !uploadedFile1Name}
-                             class="sr-only perspective-radio-input">
-                      <label for="perspective-file1" class="perspective-radio-label" title={uploadedFile1Name}>
-                          File 1: <span class="ml-1 font-normal truncate max-w-[150px] inline-block">{uploadedFile1Name}</span>
-                      </label>
-                      <input type="radio" id="perspective-file2" name="perspective" value="file2" bind:group={selectedPerspective} 
-                             on:change={getDiffImpactAnalysis}
-                             disabled={isAnalyzingImpact || !uploadedFile2Name}
-                             class="sr-only perspective-radio-input">
-                      <label for="perspective-file2" class="perspective-radio-label" title={uploadedFile2Name}>
-                          File 2: <span class="ml-1 font-normal truncate max-w-[150px] inline-block">{uploadedFile2Name}</span>
-                      </label>
+                              on:change={getDiffImpactAnalysis} 
+                              disabled={isAnalyzingImpact || !uploadedFile1Name}
+                              class="perspective-radio-input">
+                       <label for="perspective-file1" class="perspective-radio-label" title={uploadedFile1Name}>
+                           File 1: <span class="ml-1 font-normal truncate max-w-[150px] inline-block">{uploadedFile1Name}</span>
+                       </label>
+                       <input type="radio" id="perspective-file2" name="perspective" value="file2" bind:group={selectedPerspective} 
+                              on:change={getDiffImpactAnalysis}
+                              disabled={isAnalyzingImpact || !uploadedFile2Name}
+                              class="perspective-radio-input">
+                       <label for="perspective-file2" class="perspective-radio-label" title={uploadedFile2Name}>
+                           File 2: <span class="ml-1 font-normal truncate max-w-[150px] inline-block">{uploadedFile2Name}</span>
+                       </label>
                   </div>
               </div>
 
@@ -909,9 +907,7 @@
               {/if}
 
               {#key filteredImpactAnalysisResult || isAnalyzingImpact || impactAnalysisErrorMessage || selectedPerspective}
-                <div class="text-sm text-neutral-darkest space-y-3" 
-                     in:fade={{ duration: 200, delay: 50 }} 
-                     out:fade={{ duration: 150 }}>
+                <div class="text-sm text-neutral-darkest space-y-3">
                     {#if isAnalyzingImpact}
                         <div class="flex items-center text-neutral-dark py-4">
                             <svelte:component this={Loader2} class="animate-spin h-4 w-4 mr-2 text-brand-muted" />

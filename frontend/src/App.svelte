@@ -97,14 +97,14 @@
     <Sidebar {currentView} {navigate} userName={loggedInUsername} userEmail={loggedInUserEmail} />
 
     <!-- Content Area -->
-    <div class="flex-1 flex flex-col overflow-hidden">
+    <div class="flex-1 flex flex-col overflow-x-hidden">
       <!-- Minimal Top Bar (Optional) -->
       <TopBar {currentView} on:signOut={handleSignOut} on:navigate={(event) => navigate(event.detail)} />
 
       <!-- Main Content Scroll Area -->
       <main class="flex-1 overflow-x-hidden overflow-y-auto bg-neutral-lightest" id="main-content">
         {#key currentView}
-          <div in:fade={{ duration: 200, delay: 100 }} out:fade={{ duration: 100 }} class="w-full h-full">
+          <div in:fade={{ duration: 200, delay: 100 }} out:fade={{ duration: 100 }} class="w-full">
             {#if currentView === 'welcome'}
               <!-- Welcome might need full bleed or different container -->
               <Welcome {navigate} />
